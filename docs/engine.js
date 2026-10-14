@@ -63,7 +63,7 @@ export function startRun(s,options={},rng=Math.random,now=Date.now()) {
  }else if(kind!=="practice")throw new Error("未知的冒險類型");
  if(!questions.length)for(let i=0;i<(boss?8:5);i++)questions.push(mathModule(s.module).generate({tier:Math.min(6,Math.max(1,tier+(difficulty===2&&tier>=3?1:0)))},rng));
  const id="run"+now+"-"+Math.floor(rng()*1e8);
- s.run={id,kind,world,stage,tier,difficulty,boss,questions,index:0,wrong:0,perfect:0,assisted:0,questionAttempts:0,startedAt:now,answers:[],combo:0};
+ s.run={id,kind,world,stage,tier,difficulty,boss,questions,index:0,wrong:0,perfect:0,assisted:0,questionAttempts:0,startedAt:now,answers:[],combo:0,playerHp:boss?[5,4,3][difficulty]:null,maxPlayerHp:boss?[5,4,3][difficulty]:null,bossHp:boss?questions.length:null,maxBossHp:boss?questions.length:null};
  s.lastResult=null;dailyReset(s,now);return s.run;
 }
 export function publicQuestion(q){return {a:q.a,b:q.b,id:q.id,topic:q.topic,digits:q.digits,tier:q.tier};}
@@ -82,6 +82,7 @@ export function applyAction(s,action,rng=Math.random,now=Date.now()){
  case"start":result={run:startRun(s,action.options,rng,now)};break;
  case"abandon":s.run=null;result={abandoned:true};break;
  case"answer":result=answerRun(s,action,now);break;
+ case"step-answer":result=stepAnswer(s,action,now);break;
  case"claim":result=claim(s,action.key);break;
  case"buy":{const item=COLLECTION.find(x=>x.id===action.item);if(!item||!item.cost)throw new Error("無法購買這個收藏");if(s.inventory.includes(item.id))throw new Error("已經收藏了");if(s.coins<item.cost)throw new Error("雲朵幣還不夠");s.coins-=item.cost;addItem(s,item.id);result={bought:item.id};break;}
  case"equip":{if(action.item!==null&&!s.inventory.includes(action.item))throw new Error("尚未擁有這個收藏");if(action.item!==null&&!COLLECTION.find(x=>x.id===action.item)?.wear)throw new Error("這個收藏不能穿戴");s.equipped=action.item;result={equipped:s.equipped};break;}
@@ -94,26 +95,44 @@ function answerRun(s,a,now){
  const q=run.questions[run.index];if(a.questionId!==q.id)throw new Error("題目已經更新，請重新同步");
  if(!/^\d{1,4}$/.test(String(a.quotient))||!/^\d{1,2}$/.test(String(a.remainder)))throw new Error("請填入商與餘數，整除時填 0");
  s.attempts++;const ok=mathModule(q.topic).validate(q,a);
- if(!ok){run.wrong++;run.questionAttempts++;run.combo=0;
- const old=s.mistakes.find(m=>m.question.a===q.a&&m.question.b===q.b);
- if(old){old.errors++;old.lastAt=now;}else s.mistakes.push({question:q,errors:1,lastAt:now});
- s.mistakes=s.mistakes.slice(-40);
- return {correct:false,reason:Number(a.remainder)>=q.b?"餘數要比除數小喔！":Number(a.quotient)*q.b+Number(a.remainder)===q.a?"再檢查一下商和餘數。":"用「除數 × 商 ＋ 餘數」檢查，應該等於被除數。",tries:run.questionAttempts};}
+ if(!ok)return wrongAnswer(s,q,now,Number(a.remainder)>=q.b?"餘數要比除數小喔！":"用除數 × 商 ＋ 餘數檢查答案。");
  const perfect=run.questionAttempts===0&&!a.assisted;run.perfect+=perfect?1:0;run.assisted+=a.assisted?1:0;
  run.combo++;s.correct++;if(q.digits===4){s.fourCorrect++;s.daily.four++;}
  if(run.kind==="review")s.daily.review++;
  s.mistakes=s.mistakes.filter(m=>m.question.a!==q.a||m.question.b!==q.b);
  s.coins+=perfect?5:3;s.xp+=perfect?12:8;todayVisit(s,now);
+ if(run.boss){ensureBattle(run);run.bossHp=Math.max(0,run.bossHp-1);}
  run.answers.push({a:q.a,b:q.b,q:q.q,r:q.r,perfect});run.index++;run.questionAttempts=0;
  if(run.index===run.questions.length){
  const stars=run.perfect===run.questions.length?3:run.perfect>=Math.ceil(run.questions.length*.6)?2:1;
  const key=run.world+":"+run.stage;const first=run.kind==="level"&&!s.levels[key];
  if(run.kind==="level"){s.levels[key]=Math.max(s.levels[key]||0,stars);s.daily.levels++;}
  const bonus=first?(run.boss?60:25):10;s.coins+=bonus;s.xp+=run.boss?40:20;
- const entry={kind:run.kind,world:run.world,stage:run.stage,boss:run.boss,stars,perfect:run.perfect,count:run.questions.length,bonus,first,at:now,answers:run.answers};
+ const entry={outcome:"won",difficulty:run.difficulty,playerHp:run.playerHp,maxPlayerHp:run.maxPlayerHp,bossHp:run.bossHp,maxBossHp:run.maxBossHp,kind:run.kind,world:run.world,stage:run.stage,boss:run.boss,stars,perfect:run.perfect,count:run.questions.length,bonus,first,at:now,answers:run.answers};
  s.lastResult=entry;s.history.push(entry);s.history=s.history.slice(-60);s.run=null;badges(s);
  return {correct:true,finished:true,result:entry};}
  badges(s);return {correct:true,finished:false,combo:run.combo};
 }
 export const QUESTS=[{key:"four",name:"四位數小勇士",desc:"答對 5 道四位數除法",goal:5,reward:25},{key:"levels",name:"今天也去冒險",desc:"完成 1 個世界關卡",goal:1,reward:20},{key:"review",name:"把迷糊變成進步",desc:"答對 2 道錯題複習",goal:2,reward:20}];
 function claim(s,key){const q=QUESTS.find(q=>q.key===key);if(!q||s.daily[key]<q.goal)throw new Error("任務還沒完成");if(s.daily.claimed.includes(key))throw new Error("今天已經領過了");s.daily.claimed.push(key);s.coins+=q.reward;s.xp+=15;return {reward:q.reward};}
+
+function ensureBattle(r){if(!r.boss)return;r.maxPlayerHp??=[5,4,3][r.difficulty];r.playerHp??=r.maxPlayerHp;r.maxBossHp??=r.questions.length;r.bossHp??=r.questions.length-r.index;}
+function wrongAnswer(s,q,now,reason){
+ const r=s.run;r.wrong++;r.questionAttempts++;r.combo=0;
+ const old=s.mistakes.find(m=>m.question.a===q.a&&m.question.b===q.b);
+ if(old){old.errors++;old.lastAt=now;}else s.mistakes.push({question:q,errors:1,lastAt:now});
+ s.mistakes=s.mistakes.slice(-40);
+ if(r.boss){ensureBattle(r);r.playerHp=Math.max(0,r.playerHp-1);
+ if(r.playerHp===0){const entry={outcome:"lost",kind:r.kind,world:r.world,stage:r.stage,boss:true,difficulty:r.difficulty,stars:0,perfect:r.perfect,count:r.questions.length,bonus:0,first:false,at:now,answers:r.answers,playerHp:0,maxPlayerHp:r.maxPlayerHp,bossHp:r.bossHp,maxBossHp:r.maxBossHp};s.lastResult=entry;s.run=null;return {correct:false,finished:true,failed:true,result:entry,reason};}}
+ return {correct:false,reason,tries:r.questionAttempts,damage:r.boss?1:0};
+}
+function stepAnswer(s,a,now){
+ const r=s.run;if(!r)throw new Error("沒有進行中的冒險");
+ const q=r.questions[r.index];if(a.questionId!==q.id)throw new Error("題目已更新，請重新同步");
+ const steps=mathModule(q.topic).steps(q),step=steps[a.step];
+ if(!Number.isInteger(a.step)||!step||!Number.isInteger(a.phase)||a.phase<0||a.phase>2||!/^\d{1,4}$/.test(String(a.value)))throw new Error("無效的直式步驟");
+ const expected=[step.q,step.product,step.remainder][a.phase];
+ if(Number(a.value)===expected)return {correct:true,step:true};
+ s.attempts++;
+ return wrongAnswer(s,q,now,["試商再想一想：乘積不能超過目前要除的數。","再乘一次看看，可以拆成十位和個位。","再檢查減法，剩下的數要比除數小。"][a.phase]);
+}

@@ -1,5 +1,7 @@
 # 大耳狗的雲朵除法冒險
 
+> 本分支包含待發布的第二版：生成美術、六世界背景、魔王生命值與動態、直式單一模式、全螢幕與分頁版面。完整變更、驗證範圍及部署阻礙見 [ADVENTURE_V2.md](documentation/ADVENTURE_V2.md)。以下原版說明中「商與餘數」切換及舊 SVG 素材已由第二版取代。正式網址目前仍提供原版。
+
 以四位數除二位數為主、適合 iPad 橫向與直向操作的繁體中文數學遊戲。
 
 - 遊戲：https://tedus-ai.github.io/cinnamoroll-math-adventure/
