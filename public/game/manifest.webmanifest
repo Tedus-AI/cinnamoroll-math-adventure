@@ -1,0 +1,17 @@
+{
+  "name": "大耳狗的雲朵除法冒險",
+  "short_name": "雲朵除法",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f6f9fb",
+  "theme_color": "#eff8fc",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
