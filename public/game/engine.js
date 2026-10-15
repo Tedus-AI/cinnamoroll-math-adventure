@@ -1,3 +1,4 @@
+import {LEGACY_SLOTS,SCENES,MOTIONS,ensureWardrobe,useCollection} from "./wardrobe.js";
 import {seeded,divisionSteps,generateDivision} from "./modules/division.js";
 import {registerMathModule,mathModule} from "./math-modules.js";
 export {seeded,divisionSteps,generateDivision};
@@ -10,7 +11,7 @@ export const WORLDS = [
 {id:4,name:"月光城堡",subtitle:"商裡的零",icon:"🏰",color:"#f0d8ec",digits:4,tier:5,boss:"迷霧魔法師"},
 {id:5,name:"天空王國",subtitle:"除法大師",icon:"👑",color:"#f8e4b5",digits:4,tier:6,boss:"黑雲大魔王"}
 ];
-export const COLLECTION = [
+const ORIGINAL_COLLECTION = [
 {id:"cloud",name:"第一朵小雲",emoji:"☁️",desc:"第一次完成任何一關",cost:0},
 {id:"rainbow",name:"彩虹船票",emoji:"🌈",desc:"征服彩虹港灣魔王",cost:0},
 {id:"snow",name:"星光雪花",emoji:"❄️",desc:"征服星光雪原魔王",cost:0},
@@ -28,6 +29,7 @@ export const COLLECTION = [
 {id:"shell",name:"彩虹貝殼",emoji:"🐚",desc:"聽見海邊的聲音",cost:80},
 {id:"book",name:"魔法除法書",emoji:"📘",desc:"每一頁都是新的發現",cost:100}
 ];
+export const COLLECTION=[...ORIGINAL_COLLECTION.map(i=>({...i,kind:"accessory",slot:LEGACY_SLOTS[i.id]})),...SCENES,...MOTIONS];
 export const MODULES = [{id:"division",name:"除法冒險",status:"ready"},{id:"mixed",name:"四則混合",status:"planned"},{id:"fractions",name:"分數樂園",status:"planned"}];
 export function taipeiDay(now=Date.now()) {return new Date(now+8*3600000).toISOString().slice(0,10);}
 export function newState(name="小小冒險家") {
@@ -40,6 +42,7 @@ export function playerLevel(s){return 1+Math.floor(s.xp/100);}
 export function worldUnlocked(s,w){return w<=2||Boolean(s.levels[(w-1)+":5"]);}
 export function stageUnlocked(s,w,l){return worldUnlocked(s,w)&&(l===0||Boolean(s.levels[w+":"+(l-1)]));}
 export function badges(s){
+ ensureWardrobe(s);
  if(s.history.length)addItem(s,"cloud");
  if(s.correct>=25)addItem(s,"tea");
  if(s.correct>=75)addItem(s,"ribbon");
@@ -68,7 +71,7 @@ export function startRun(s,options={},rng=Math.random,now=Date.now()) {
 }
 export function publicQuestion(q){return {a:q.a,b:q.b,id:q.id,topic:q.topic,digits:q.digits,tier:q.tier};}
 export function publicState(s){
- const copy=JSON.parse(JSON.stringify(s));
+ const copy=JSON.parse(JSON.stringify(s));ensureWardrobe(copy);
  if(copy.run)copy.run.questions=copy.run.questions.map(publicQuestion);
  copy.mistakes=copy.mistakes.map(m=>({...m,question:publicQuestion(m.question)}));
  return copy;
@@ -76,7 +79,7 @@ export function publicState(s){
 export function applyAction(s,action,rng=Math.random,now=Date.now()){
  if(!action||!action.id||typeof action.id!=="string"||action.id.length>100)throw new Error("缺少操作編號");
  if(s.actions.includes(action.id))return {duplicate:true};
- dailyReset(s,now);
+ dailyReset(s,now);ensureWardrobe(s);
  let result;
  switch(action.type){
  case"start":result={run:startRun(s,action.options,rng,now)};break;
@@ -85,7 +88,8 @@ export function applyAction(s,action,rng=Math.random,now=Date.now()){
  case"step-answer":result=stepAnswer(s,action,now);break;
  case"claim":result=claim(s,action.key);break;
  case"buy":{const item=COLLECTION.find(x=>x.id===action.item);if(!item||!item.cost)throw new Error("無法購買這個收藏");if(s.inventory.includes(item.id))throw new Error("已經收藏了");if(s.coins<item.cost)throw new Error("雲朵幣還不夠");s.coins-=item.cost;addItem(s,item.id);result={bought:item.id};break;}
- case"equip":{if(action.item!==null&&!s.inventory.includes(action.item))throw new Error("尚未擁有這個收藏");if(action.item!==null&&!COLLECTION.find(x=>x.id===action.item)?.wear)throw new Error("這個收藏不能穿戴");s.equipped=action.item;result={equipped:s.equipped};break;}
+ case"equip":{useCollection(s,action.item,COLLECTION);result={equipped:action.item};break;}
+ case"unequip-slot":{const w=ensureWardrobe(s);if(!Object.values(LEGACY_SLOTS).includes(action.slot))throw new Error("無效的配件位置");if(w.slots[action.slot]===s.equipped)s.equipped=null;delete w.slots[action.slot];result={removed:action.slot};break;}
  default:throw new Error("未知的操作");
  }
  s.actions.push(action.id);s.actions=s.actions.slice(-100);return result;

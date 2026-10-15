@@ -1,3 +1,7 @@
+import {sound,unlockAudio,audioSettings,setAudio} from "./audio.js";
+import {ensureWardrobe} from "./wardrobe.js";
+import {roomMarkup,itemCard,animateRoom,stopRoom} from "./dressing-room.js";
+let closetTab="accessory",closetPage=0,focusMode=false;
 import {WORLDS,COLLECTION,QUESTS,MODULES,newState,applyAction,dailyReset,playerLevel,stageUnlocked,worldUnlocked,divisionSteps} from "./engine.js";
 import {cinna,bossArt,scenery} from "./art.js";
 import {API_BASE} from "./config.js";
@@ -40,10 +44,10 @@ function resetQuestion(){
 }
 function stashWork(){const q=state.run?.questions[state.run.index];if(q)put("cloudmath:work:"+identity()+":"+q.id,ui.guide);}
 function currentQ(){return state.run?.questions[state.run.index];}
-function nav(){return [["home","☁️","冒險地圖"],["daily","🌟","每日任務"],["practice","✏️","自由練習"],["collection","🎀","我的收藏"],["report","📘","學習紀錄"]].map(([id,icon,label])=>'<button class="nav-item '+(view===id||view==="world"&&id==="home"?"active":"")+'" data-action="nav" data-view="'+id+'"><span>'+icon+'</span>'+label+'</button>').join("");}
+function nav(){return [["home","☁️","冒險地圖"],["daily","🌟","每日任務"],["practice","✏️","自由練習"],["dressing","🧸","換裝小屋"],["collection","🎀","我的收藏"],["report","📘","學習紀錄"]].map(([id,icon,label])=>'<button class="nav-item '+(view===id||view==="world"&&id==="home"?"active":"")+'" data-action="nav" data-view="'+id+'"><span>'+icon+'</span>'+label+'</button>').join("");}
 function render(){
- dailyReset(state);const w=view==="play"?state.run?.world??2:view==="world"?selectedWorld:2;document.body.dataset.view=view;
- root.innerHTML='<div class="shell">'+scenery(w,"app-scenery")+'<aside class="rail"><div class="rail-logo">'+cinna()+'</div>'+nav()+'<div class="rail-foot">小小練習<br>大大進步 ♡</div></aside><div class="page"><header class="topbar"><div class="brand">大耳狗的雲朵除法冒險<small>CLOUD MATH ADVENTURE</small></div><div class="top-actions"><button class="fullscreen-button" data-action="fullscreen">'+(document.fullscreenElement||document.webkitFullscreenElement?"⤡ 離開全螢幕":"⛶ 全螢幕")+'</button><div class="currency">🪙 <b>'+state.coins+'</b></div><button class="profile" data-action="account"><span class="avatar">☁️</span><span class="profile-name">'+(account?safe(state.name):"登入雲端")+'</span></button></div></header><main class="content">'+(view==="home"?home():view==="daily"?dailyPage():view==="world"?worldPage():view==="play"?play():view==="practice"?practice():view==="collection"?collection():view==="report"?report():modules())+'</main><footer class="footer">非官方粉絲學習作品 · Cinnamoroll / Sanrio · 每一步都算進步。</footer></div></div>';if(busy)root.classList.add("busy");
+ stopRoom();ensureWardrobe(state);dailyReset(state);const w=view==="play"?state.run?.world??2:view==="world"?selectedWorld:2;document.body.dataset.view=view;
+ root.innerHTML='<div class="shell">'+scenery(w,"app-scenery")+'<aside class="rail"><div class="rail-logo">'+cinna()+'</div>'+nav()+'<div class="rail-foot">小小練習<br>大大進步 ♡</div></aside><div class="page"><header class="topbar"><div class="brand">大耳狗的雲朵除法冒險<small>CLOUD MATH ADVENTURE</small></div><div class="top-actions"><button class="sound-button" data-action="sound-settings" aria-label="音效設定">'+(audioSettings().enabled?"🔊":"🔇")+'</button><button class="fullscreen-button" data-action="focus-mode">'+(focusMode?"離開專注模式":"專注模式")+'</button><button class="fullscreen-button" data-action="fullscreen">'+(document.fullscreenElement||document.webkitFullscreenElement?"⤡ 離開全螢幕":"⛶ 全螢幕")+'</button><div class="currency">🪙 <b>'+state.coins+'</b></div><button class="profile" data-action="account"><span class="avatar">☁️</span><span class="profile-name">'+(account?safe(state.name):"登入雲端")+'</span></button></div></header><main class="content">'+(view==="home"?home():view==="daily"?dailyPage():view==="world"?worldPage():view==="play"?play():view==="practice"?practice():view==="dressing"?roomMarkup(state,closetTab,closetPage):view==="collection"?collection():view==="report"?report():modules())+'</main><footer class="footer">非官方粉絲學習作品 · Cinnamoroll / Sanrio · 每一步都算進步。</footer></div></div>';if(busy)root.classList.add("busy");if(view==="dressing")animateRoom(state);
 }
 function saved(){return '<span class="status '+(status.includes("未")||status.includes("重試")?"warning":"")+'">'+safe(status)+'</span>';}
 function title(h,p,label="YOUR LITTLE ADVENTURE"){return '<div class="title-row"><div><div class="eyebrow">'+label+'</div><h1>'+h+'</h1><p>'+p+'</p></div>'+saved()+'</div>';}
@@ -101,29 +105,30 @@ async function submit(){
  if(Number(g.entered)!==expected){
  const hit=await event("step-answer",{questionId:q.id,step:g.step,phase:g.phase,value:g.entered});
  if(!hit){render();return;}
- g.assisted=true;stashWork();battleFx={type:"hurt",until:Date.now()+1200};
+ sound(state.run?.boss||hit.failed?"hurt":"wrong");g.assisted=true;stashWork();battleFx={type:"hurt",until:Date.now()+1200};
  if(hit.failed||!state.run){view="world";selectedWorld=state.lastResult?.world??2;render();resultModal();return;}
  ui.feedback={correct:false,text:hit.reason||"再想一想這一步。"};render();return;
  }
  g.values[g.step+":"+g.phase]=g.entered;g.entered="";g.phase++;
  if(g.phase===3){g.phase=0;g.step++;}
- if(g.step<steps.length){ui.feedback=null;stashWork();render();return;}
+ if(g.step<steps.length){sound("step");ui.feedback=null;stashWork();render();return;}
  ui.quotient=steps.map((_,i)=>g.values[i+":0"]).join("");ui.remainder=g.values[(steps.length-1)+":2"];assisted=assisted||g.assisted;stashWork();
  }
  if(ui.quotient===""||ui.remainder===""){ui.field=ui.quotient===""?"quotient":"remainder";toast("商和餘數都要填，整除時餘數填 0");render();return;}
- const oldQ=q;const result=await event("answer",{questionId:q.id,quotient:ui.quotient,remainder:ui.remainder,assisted});
+ const oldQ=q,wasBoss=state.run.boss;const result=await event("answer",{questionId:q.id,quotient:ui.quotient,remainder:ui.remainder,assisted});
  if(!result){if(ui.mode==="guide"&&ui.guide.step>=targets(q).length){ui.guide.step=targets(q).length-1;ui.guide.phase=2;ui.guide.entered=ui.remainder;stashWork();}render();return;}
  if(result.duplicate){if(!state.run)resultModal();else{resetQuestion();render();}return;}
  if(result.failed){view="world";selectedWorld=state.lastResult.world;render();resultModal();return;}
  if(!result.correct){ui.feedback={correct:false,text:result.reason};if(ui.mode==="guide"){resetQuestion();}render();return;}
- battleFx={type:result.correct?"hero-attack":"hurt",until:Date.now()+1400};
+ sound(wasBoss?"attack":"correct");battleFx={type:result.correct?"hero-attack":"hurt",until:Date.now()+1400};
 
  if(result.finished){view="home";render();resultModal();return;}
  ui.solvedQ=oldQ;ui.feedback={correct:true,text:"算對了！ "+oldQ.a+" = "+oldQ.b+" × "+Math.floor(oldQ.a/oldQ.b)+" + "+oldQ.a%oldQ.b};render();
  if(state.correct%15===0)toast("完成 15 道小挑戰了！可以讓眼睛休息一下，再回來冒險 ♡");
 }
 function collection(){
- return title("把冒險的小回憶，收藏起來","通關紀念、成就寶物，還有大耳狗的新裝扮。","YOUR CLOUD TREASURES")+'<div class="inventory-banner">'+cinna(state.equipped)+'<div><h2>今天的大耳狗，也很可愛 ♡</h2><p>已收藏 '+state.inventory.length+' / '+COLLECTION.length+' · 雲朵幣 '+state.coins+'</p><button class="small-button" data-action="equip" data-item="">回到原本的樣子</button></div></div><div class="collections">'+COLLECTION.slice(collectionPage*8,collectionPage*8+8).map(i=>{const owned=state.inventory.includes(i.id);return '<section class="collect-card '+(owned?"":"unowned")+'"><div class="item-icon">'+i.emoji+'</div><h3>'+i.name+'</h3><p>'+i.desc+'</p>'+(owned?i.wear?'<button class="small-button" data-action="equip" data-item="'+i.id+'" '+(state.equipped===i.id?"disabled":"")+'>'+(state.equipped===i.id?"穿戴中 ✓":"讓大耳狗戴上")+'</button>':'<span class="pill">已收藏 ✓</span>':i.cost?'<button class="small-button" data-action="buy" data-item="'+i.id+'" '+(state.coins<i.cost?"disabled":"")+'>🪙 '+i.cost+' · 收藏</button>':'<span class="pill">冒險成就獎勵</span>')+'</section>';}).join("")+'</div>'+pager(collectionPage,Math.ceil(COLLECTION.length/8),"collection-page");
+ const size=6;collectionPage=Math.min(collectionPage,Math.ceil(COLLECTION.length/size)-1);
+ return title("每一件寶物，都能陪大耳狗玩", "配件、場景與動作，都能直接套用到換裝小屋。", "YOUR CLOUD TREASURES")+'<div class="collection-summary"><span>已收藏 '+state.inventory.length+' / '+COLLECTION.length+' · 🪙 '+state.coins+'</span><button class="primary" data-action="nav" data-view="dressing">前往換裝小屋 →</button></div><div class="collection-grid">'+COLLECTION.slice(collectionPage*size,collectionPage*size+size).map(i=>itemCard(state,i)).join("")+'</div>'+pager(collectionPage,Math.ceil(COLLECTION.length/size),"collection-page");
 }
 function report(){
 const accuracy=state.attempts?Math.round(state.correct/state.attempts*100):0,rows=reportTab==="history"?state.history.slice().reverse():state.mistakes,pages=Math.max(1,Math.ceil(rows.length/5));reportPage=Math.min(reportPage,pages-1);
@@ -132,11 +137,11 @@ return title("每一次練習，都留下小腳印","看看自己的進步，下
 function modules(){return title("下一站，還有更多數學世界","目前開放除法冒險；其他主題正在規劃。","MORE WORLDS TO COME")+'<div class="module-grid">'+MODULES.map((m,i)=>'<section class="module-card"><span>'+["☁️","➕","🍰"][i]+'</span><h2>'+m.name+'</h2><p>'+["四位數除法為主，二、三位數可以暖身。","未來練習運算順序、括號與四則混合。","未來練習分數大小、通分與分數運算。"][i]+'</p>'+(i===0?'<button class="primary" data-action="nav" data-view="practice">現在去練習 →</button>':'<span class="pill">尚未開放</span>')+'</section>').join("")+'</div>';}
 function modal(content,cls=""){modalRoot.innerHTML='<div class="modal-backdrop"><section class="modal-card '+cls+'" role="dialog" aria-modal="true"><button class="close" data-action="close" aria-label="關閉">×</button>'+content+'</section></div>';const close=modalRoot.querySelector(".close");close?.focus();}
 function closeModal(){form=null;modalRoot.innerHTML="";}
-function resultModal(){const r=state.lastResult;if(!r)return;const lost=r.outcome==="lost";modal((r.boss?arena(r,r):cinna(state.equipped,"",3))+'<div class="eyebrow">'+(lost?"LET’S TRY AGAIN":"A LITTLE WIN, A BIG SMILE")+'</div><h2>'+(lost?"這次先休息，再挑戰一次！":r.boss?"烏雲散開，世界放晴了！":"又完成一段小冒險！")+'</h2>'+(lost?'<p>魔王還有 '+r.bossHp+' 點生命。這次沒有通關，先前練習得到的獎勵會保留。</p>':'<div class="result-stars">'+"★".repeat(r.stars)+"☆".repeat(3-r.stars)+'</div><p>🪙 通關獎勵 +'+r.bonus+' · '+r.perfect+' / '+r.count+' 題完美作答</p>')+'<div class="modal-actions"><button class="secondary" data-action="result-map">回到地圖</button><button class="primary" data-action="'+(lost?"boss-retry":"result-next")+'">'+(lost?"重新挑戰魔王 ↻":"再冒險一關 →")+'</button></div>',"result");}
+function resultModal(){const r=state.lastResult;if(!r)return;const lost=r.outcome==="lost";sound(lost?"defeat":r.boss?"bossWin":"clear");modal((r.boss?arena(r,r):cinna(state.equipped,"",3))+'<div class="eyebrow">'+(lost?"LET’S TRY AGAIN":"A LITTLE WIN, A BIG SMILE")+'</div><h2>'+(lost?"這次先休息，再挑戰一次！":r.boss?"烏雲散開，世界放晴了！":"又完成一段小冒險！")+'</h2>'+(lost?'<p>魔王還有 '+r.bossHp+' 點生命。這次沒有通關，先前練習得到的獎勵會保留。</p>':'<div class="result-stars">'+"★".repeat(r.stars)+"☆".repeat(3-r.stars)+'</div><p>🪙 通關獎勵 +'+r.bonus+' · '+r.perfect+' / '+r.count+' 題完美作答</p>')+'<div class="modal-actions"><button class="secondary" data-action="result-map">回到地圖</button><button class="primary" data-action="'+(lost?"boss-retry":"result-next")+'">'+(lost?"重新挑戰魔王 ↻":"再冒險一關 →")+'</button></div>',"result");}
 function hint(full=false,page=0){const q=currentQ();if(!q)return;ui.assisted=true;if(ui.guide){ui.guide.assisted=true;stashWork();}const steps=targets(q);lessonPage=Math.max(0,Math.min(page,steps.length-1));const s=steps[lessonPage];modal('<div class="eyebrow">LET’S THINK TOGETHER</div><h2>'+(full?"一起看這題的直式":"先找一點小線索")+'</h2><p>'+q.a+' ÷ '+q.b+' · 先想一想除數的倍數。</p>'+(full?'<div class="lesson-step"><b>第 '+(lessonPage+1)+' / '+steps.length+' 輪</b><br>'+s.value+' ÷ '+q.b+' → 商 '+s.q+'<br>'+q.b+' × '+s.q+' = '+s.product+'<br>'+s.value+' − '+s.product+' = '+s.remainder+(s.next!==null?'<br>拉下 '+s.next+'，下一輪看 '+(s.remainder*10+s.next):"")+'</div>'+pager(lessonPage,steps.length,"lesson-page"):'<div class="lesson-step">① 每一位的商只能是 0～9。<br>② 除數 × 這位的商，不能比目前要除的數大。<br>③ 相減後，剩下的數要比除數小。<br>④ 拉下下一位，商是 0 時也要寫出來。</div><div class="multiples">'+[1,2,3,4,5,6,7,8,9].map(n=>'<span>'+q.b+' × '+n+' = '+q.b*n+'</span>').join("")+'</div>')+'<p>看過提示仍可通關；這題會記為輔助作答。</p><button class="primary submit" data-action="close">我再試一次 ♡</button>');}
 async function begin(options){
  if(state.run){modal('<h2>還有一場小冒險</h2><p>你已經完成 '+state.run.index+' / '+state.run.questions.length+' 題。要先繼續嗎？</p><div class="modal-actions"><button class="primary" data-action="continue">繼續冒險</button><button class="secondary" data-action="replace-run">換一場冒險</button></div>');window.nextRunOptions=options;return;}
- const r=await event("start",{options});if(r){view="play";resetQuestion();closeModal();render();}
+ const r=await event("start",{options});if(r){sound("start");view="play";resetQuestion();closeModal();render();}
 }
 function stageOptions(w,l){ui.difficulty=0;window.nextRunOptions={kind:"level",world:w,stage:l,difficulty:0};modal('<div class="eyebrow">READY FOR A LITTLE ADVENTURE?</div><h2>'+WORLDS[w].name+' · '+(l===5?"魔王關":"第 "+(l+1)+" 關")+'</h2><p>'+(l===5?"完成一題攻擊魔王；每一步算錯扣 1 點生命。生命歸零需重新挑戰。":"5 道除法，完成後開啟下一關。")+'</p>'+difficultyButtons()+'<button class="primary submit" data-action="stage-start">準備好了，出發 →</button>');}
 function openAuth(mode="login"){
@@ -145,7 +150,7 @@ function openAuth(mode="login"){
 }
 function authRender(){
  const m=form.mode;
- modal('<div class="eyebrow">YOUR OWN CLOUD ADVENTURE</div><h2>'+(m==="register"?"建立你的冒險帳號":m==="recover"?"用家長復原碼登入":m==="pin"?"設定新的數字密碼":"歡迎回到雲朵世界")+'</h2><p>'+(m==="register"?"同一帳號可以在不同裝置接續進度。訪客進度會另外留在這台裝置。":m==="pin"?"設定 8–12 位數字。其他装置將需要重新登入。":"登入後，關卡、收藏與每日任務都會跟著你。")+'</p>'+(m==="pin"?"":'<div class="auth-tabs"><button data-action="auth-mode" data-mode="login" class="'+(m==="login"?"chosen":"")+'">登入</button><button data-action="auth-mode" data-mode="register" class="'+(m==="register"?"chosen":"")+'">建立帳號</button></div><label for="username">帳號 · 英文字母、數字、底線</label><input class="text-input" id="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="24" value="'+safe(form.username)+'">')+(m==="register"?'<label for="nickname">冒險家暱稱</label><input class="text-input" id="nickname" maxlength="20" value="'+safe(form.name)+'">':"")+(m==="recover"?'<label for="recovery-input">家長復原碼</label><input class="text-input" id="recovery-input" autocomplete="off" autocapitalize="none" spellcheck="false">':'<label>數字密碼 · 8–12 位</label><button id="auth-pin" class="auth-pin" aria-label="數字密碼">'+"●".repeat(form.pin.length)+'</button>'+keypad(true))+'<div class="error" id="auth-error"></div><button class="primary submit" data-action="auth-submit">'+(m==="register"?"建立帳號，開始冒險":m==="pin"?"更新數字密碼":"登入我的冒險")+'</button>'+(m==="pin"?"":'<button class="inline-link" data-action="auth-mode" data-mode="recover">忘記數字密碼？用家長復原碼登入</button>'));
+ modal('<div class="eyebrow">YOUR OWN CLOUD ADVENTURE</div><h2>'+(m==="register"?"建立你的冒險帳號":m==="recover"?"用家長復原碼登入":m==="pin"?"設定新的數字密碼":"歡迎回到雲朵世界")+'</h2><p>'+(m==="register"?"帳號進度存於雲端 D1 資料庫，可跨裝置接續。訪客進度另外存在本機。":m==="pin"?"設定 8–12 位數字。其他装置將需要重新登入。":"登入後，關卡、收藏與每日任務都會跟著你。")+'</p>'+(m==="pin"?"":'<div class="auth-tabs"><button data-action="auth-mode" data-mode="login" class="'+(m==="login"?"chosen":"")+'">登入</button><button data-action="auth-mode" data-mode="register" class="'+(m==="register"?"chosen":"")+'">建立帳號</button></div><label for="username">帳號 · 英文字母、數字、底線</label><input class="text-input" id="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="24" value="'+safe(form.username)+'">')+(m==="register"?'<label for="nickname">冒險家暱稱</label><input class="text-input" id="nickname" maxlength="20" value="'+safe(form.name)+'">':"")+(m==="recover"?'<label for="recovery-input">家長復原碼</label><input class="text-input" id="recovery-input" autocomplete="off" autocapitalize="none" spellcheck="false">':'<label>數字密碼 · 8–12 位</label><button id="auth-pin" class="auth-pin" aria-label="數字密碼">'+"●".repeat(form.pin.length)+'</button>'+keypad(true))+'<div class="error" id="auth-error"></div><button class="primary submit" data-action="auth-submit">'+(m==="register"?"建立帳號，開始冒險":m==="pin"?"更新數字密碼":"登入我的冒險")+'</button>'+(m==="pin"?"":'<button class="inline-link" data-action="auth-mode" data-mode="recover">忘記數字密碼？用家長復原碼登入</button>'));
 }
 async function authSubmit(){
  if(busy||!form)return;
@@ -165,7 +170,7 @@ function recoveryModal(code){
 }
 function accountModal(){
  if(!account){openAuth();return;}
- modal('<div class="eyebrow">YOUR ADVENTURER PROFILE</div><h2>'+safe(state.name)+' 的冒險帳號</h2><p>帳號：'+safe(account.user.username)+'<br>冒險等級 '+playerLevel(state)+' · '+state.xp+' XP<br>'+safe(status)+'</p><div class="settings-list"><button class="secondary" data-action="refresh">↻ 同步最新進度</button><button class="secondary" data-action="change-pin">更新數字密碼</button><button class="secondary" data-action="logout">在這台裝置登出</button></div>');
+ modal('<div class="eyebrow">YOUR ADVENTURER PROFILE</div><h2>'+safe(state.name)+' 的冒險帳號</h2><p>儲存位置：Cloudflare D1 雲端資料庫<br>帳號：'+safe(account.user.username)+'<br>冒險等級 '+playerLevel(state)+' · '+state.xp+' XP<br>'+safe(status)+'</p><div class="settings-list"><button class="secondary" data-action="refresh">↻ 同步最新進度</button><button class="secondary" data-action="change-pin">更新數字密碼</button><button class="secondary" data-action="logout">在這台裝置登出</button></div>');
 }
 async function refresh(){
  if(!account)return;
@@ -173,11 +178,20 @@ async function refresh(){
  catch(e){status=e.status===401?"請重新登入":"雲端暫時離線";render();toast(e.message);}
 }
 document.addEventListener("click",async e=>{
- const el=e.target.closest("button");if(!el)return;
+ const el=e.target.closest("button");if(!el||el.disabled)return;unlockAudio();sound(el.dataset.digit!==undefined?"digit":"click");
  if(el.dataset.digit!==undefined){digit(el.dataset.digit);return;}
  const a=el.dataset.action;if(!a)return;
  switch(a){
  case"fullscreen":await toggleFullscreen();break;
+ case"focus-mode":focusMode=!focusMode;document.body.classList.toggle("focus-mode",focusMode);render();if(focusMode)toast("專注模式已開啟；系統狀態列仍由 iPadOS 控制");break;
+ case"sound-settings":audioModal();break;
+ case"sound-toggle":setAudio({enabled:!audioSettings().enabled});if(audioSettings().enabled){unlockAudio();sound("correct");}render();audioModal();break;
+ case"volume":setAudio({volume:Number(el.dataset.value)});sound("correct");audioModal();break;
+ case"closet-tab":closetTab=el.dataset.tab;closetPage=0;render();break;
+ case"closet-page":closetPage=Number(el.dataset.page);render();break;
+ case"motion-next":animateRoom(state);break;
+ case"unequip-slot":{const r=await event("unequip-slot",{slot:el.dataset.slot});if(r){sound("equip");render();}break;}
+
  case"collection-page":collectionPage=Number(el.dataset.page);render();break;
  case"report-page":reportPage=Number(el.dataset.page);render();break;
  case"report-tab":reportTab=el.dataset.tab;reportPage=0;render();break;
@@ -203,9 +217,9 @@ document.addEventListener("click",async e=>{
  case"lesson":hint(true);break;
  case"leave":view="home";render();toast("已保留這場冒險，隨時可以回來");break;
  case"close":closeModal();break;
- case"claim":{const r=await event("claim",{key:el.dataset.key});if(r){toast("任務完成！獲得 "+r.reward+" 個雲朵幣");render();}break;}
- case"buy":{const r=await event("buy",{item:el.dataset.item});if(r){toast("新的寶物加入收藏了 ♡");render();}break;}
- case"equip":{const r=await event("equip",{item:el.dataset.item||null});if(r){render();}break;}
+ case"claim":{const r=await event("claim",{key:el.dataset.key});if(r){sound("reward");toast("任務完成！獲得 "+r.reward+" 個雲朵幣");render();}break;}
+ case"buy":{const r=await event("buy",{item:el.dataset.item});if(r){sound("reward");toast("新的寶物加入收藏了 ♡");render();}break;}
+ case"equip":{const r=await event("equip",{item:el.dataset.item||null});if(r){sound("equip");render();}break;}
  case"account":accountModal();break;
  case"auth-mode":openAuth(el.dataset.mode);break;
  case"auth-submit":await authSubmit();break;
@@ -223,7 +237,7 @@ document.addEventListener("keydown",e=>{
  if(/^[0-9]$/.test(e.key)){if(form||view==="play"){e.preventDefault();digit(e.key);}}
  else if(e.key==="Enter"&&!form&&view==="play"){e.preventDefault();submit();}
  else if(e.key==="Backspace"&&!form&&view==="play"){e.preventDefault();if(ui.mode==="guide"){ui.guide.entered=ui.guide.entered.slice(0,-1);stashWork();}else ui[ui.field]=ui[ui.field].slice(0,-1);render();}
- else if(e.key==="Escape")closeModal();
+ else if(e.key==="Escape"){closeModal();}
 });
 setInterval(()=>{const el=$("#elapsed");if(el&&state.run){const seconds=Math.max(0,Math.floor((Date.now()-state.run.startedAt)/1000));el.textContent="⏱ "+Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");}},1000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&account&&!busy&&view!=="play")refresh();});
@@ -234,9 +248,16 @@ if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch
 function pager(page,total,action){return '<div class="pager"><button class="secondary" data-action="'+action+'" data-page="'+(page-1)+'" '+(page<=0?"disabled":"")+'>← 上一頁</button><span>'+(page+1)+' / '+Math.max(1,total)+'</span><button class="secondary" data-action="'+action+'" data-page="'+(page+1)+'" '+(page>=total-1?"disabled":"")+'>下一頁 →</button></div>';}
 
 async function toggleFullscreen(){
+ if(!(document.fullscreenElement||document.webkitFullscreenElement)&&!read("cloudmath:fullscreen-info",false)&&(/iPad|iPhone/.test(navigator.userAgent)||navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1)){
+  put("cloudmath:fullscreen-info",true);modal('<h2>iPad 的大畫面模式</h2><p>Safari 的原生全螢幕可能顯示時間、退出 X 與系統退出手勢，網頁無法移除。按下方按鈕繼續進入。</p><p>想減少誤觸，可使用上方「專注模式」；也可透過 Safari 分享 → 加入主畫面，從遊戲圖示啟動。主畫面模式仍受 iPadOS 控制，不能保證隱藏時間。</p><button class="primary" data-action="fullscreen">進入原生全螢幕</button>');return;
+ }
+ closeModal();
  try{if(document.fullscreenElement||document.webkitFullscreenElement){const exit=document.exitFullscreen||document.webkitExitFullscreen;await exit.call(document);}
  else{const enter=document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen;if(!enter)throw new Error("unsupported");await enter.call(document.documentElement);}}
  catch{modal('<h2>在 iPad 開啟大畫面</h2><p>目前的瀏覽器無法直接切換全螢幕。請用 Safari 開啟此遊戲，點「分享」→「加入主畫面」，再從主畫面的遊戲圖示啟動。</p><p>加入主畫面後，遊戲會以獨立視窗開啟。橫向、直向都能繼續同一題。</p><button class="primary" data-action="close">知道了</button>');}
 }
 document.addEventListener("fullscreenchange",()=>render());
 document.addEventListener("webkitfullscreenchange",()=>render());
+
+function audioModal(){const a=audioSettings();modal('<h2>🔊 雲朵音效</h2><p>按鍵、答題、戰鬥和獎勵各有自己的聲音。音效在第一次點擊後啟用。</p><button class="primary" data-action="sound-toggle">'+(a.enabled?'關閉音效':'開啟音效')+'</button><div class="audio-levels">'+[[.15,'輕柔'],[.3,'適中'],[.6,'響亮']].map(([v,n])=>'<button class="secondary '+(a.volume===v?'chosen':'')+'" data-action="volume" data-value="'+v+'">'+n+'</button>').join('')+'</div><p>音效設定只影響這台裝置。若 iPad 沒有聲音，請確認系統音量。</p>');}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopRoom();else if(view==='dressing')animateRoom(state);});
