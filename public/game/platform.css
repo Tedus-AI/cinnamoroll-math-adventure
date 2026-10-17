@@ -1,0 +1,24 @@
+html[data-platform=tablet] #app{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+html[data-platform=tablet] input,html[data-platform=tablet] textarea{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+#app img,#app svg,#app canvas{-webkit-user-drag:none;-webkit-touch-callout:none}
+.original-character,.original-rig,.character-live,.doll-rig,.room-background{pointer-events:none;background:transparent!important}
+.original-character{filter:none}
+.doll-scene .rig-accessory{pointer-events:none}
+.doll-scene .rig-accessory.selected{pointer-events:auto}
+.doll-scene .rig-accessory.selected .resize-handle{pointer-events:auto}
+.doll-scene .movable-prop,.doll-scene .movable-prop:active,.doll-scene .movable-prop:hover{transform:translate(-50%,-50%);transition:none;min-width:0;min-height:0;max-width:none;max-height:none;appearance:none;-webkit-appearance:none}
+.doll-scene .movable-prop *{pointer-events:none}
+.doll-scene .movable-prop .resize-handle{pointer-events:auto}
+html[data-platform=tablet] .resize-handle{width:24px;height:24px}
+html[data-platform=tablet] .resize-handle[data-corner=nw]{left:-12px;top:-12px}
+html[data-platform=tablet] .resize-handle[data-corner=ne]{right:-12px;top:-12px}
+html[data-platform=tablet] .resize-handle[data-corner=sw]{left:-12px;bottom:-12px}
+html[data-platform=tablet] .resize-handle[data-corner=se]{right:-12px;bottom:-12px}
+html[data-platform=tablet] .topbar{gap:8px;padding-left:12px;padding-right:12px}
+html[data-platform=tablet] .top-actions{gap:6px}
+html[data-platform=tablet] .dressing-layout{grid-template-columns:minmax(0,1fr) 270px}
+.page-fullscreen,.page-fullscreen body{height:100%;overflow:hidden;overscroll-behavior:none}
+.page-fullscreen #app{position:fixed;inset:0;height:100dvh;overflow-y:auto;overscroll-behavior:none;-webkit-overflow-scrolling:touch;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.page-fullscreen .topbar{position:sticky;top:0;z-index:20}
+@media(max-width:760px){html[data-platform=tablet] .dressing-layout{grid-template-columns:1fr;height:auto}html[data-platform=tablet] .doll-scene{height:60dvh;min-height:340px}html[data-platform=tablet] .closet-panel{min-height:480px}}
+html[data-platform=tablet] .movable-prop:not(.selected)>.resize-handle,html[data-platform=tablet] .rig-accessory:not(.selected)>.resize-handle{display:none}

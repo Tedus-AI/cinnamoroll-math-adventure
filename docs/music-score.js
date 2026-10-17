@@ -17,6 +17,20 @@ export const MUSIC={
  'boss-4':make('迷霧魔法陣',62,128,[12,13,19,20,19,13,12,10,15,17,20,19,17,15,13,10],[0,1,8,7],'triangle',true),
  'boss-5':make('勇者與黑雲',64,144,[12,19,24,19,22,17,20,15,12,15,19,22,24,26,27,22],[0,8,5,7],'triangle',true)
 };
+// Distinct arrangements: flute meadow, harp waltz, syncopated harbor,
+// sparse snow bells, slow moon strings, and a royal fanfare.
+const arrangements=[
+ {instrument:'flute',beats:8,swing:0,notes:[1,1,0,1,1,0,1,0],arp:[0,7,12,7],length:1.8},
+ {instrument:'harp',beats:6,swing:0,notes:[1,0,1,1,0,1],arp:[0,4,7],length:1.2},
+ {instrument:'steel',beats:8,swing:.18,notes:[1,0,1,1,0,1,0,1],arp:[0,7,4,12],length:.85},
+ {instrument:'bell',beats:8,swing:0,notes:[1,0,0,1,0,0,1,0],arp:[12,7,16,7],length:3.4},
+ {instrument:'strings',beats:8,swing:0,notes:[1,0,1,0,1,1,0,0],arp:[0,3,7,10],length:3},
+ {instrument:'brass',beats:8,swing:.08,notes:[1,1,0,1,1,1,1,0],arp:[0,7,12,16],length:1.3}
+];
+for(let w=0;w<6;w++){
+ Object.assign(MUSIC['world-'+w],arrangements[w]);
+ Object.assign(MUSIC['boss-'+w],arrangements[w],{beats:8,notes:[1,1,1,0,1,1,0,1],length:.8,swing:0});
+}
 export function musicTrack(view,world=0,boss=false){
  if(view==='dressing')return 'dressing';
  if(view==='practice')return 'practice';

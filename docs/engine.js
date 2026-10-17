@@ -95,7 +95,7 @@ export function applyAction(s,action,rng=Math.random,now=Date.now()){
  case"buy":{const item=COLLECTION.find(x=>x.id===action.item);if(!item||!item.cost)throw new Error("無法購買這個收藏");if(s.inventory.includes(item.id))throw new Error("已經收藏了");if(s.coins<item.cost)throw new Error("雲朵幣還不夠");s.coins-=item.cost;addItem(s,item.id);result={bought:item.id};break;}
  case"equip":{useCollection(s,action.item,COLLECTION);result={equipped:action.item};break;}
  case"place-prop":{placeProp(s,action,COLLECTION);result={placed:action.item};break;}
- case"resize-wear":{const w=ensureWardrobe(s),i=COLLECTION.find(i=>i.id===action.item);if(!i||isFreeItem(i)||w.slots[i.slot]!==i.id||!s.inventory.includes(i.id)||!Number.isFinite(action.scale)||action.scale<.5||action.scale>2)throw new Error('只能調整已穿戴配件的大小');w.wearScales[i.id]=action.scale;result={resized:i.id};break;}
+ case"resize-wear":{const w=ensureWardrobe(s),i=COLLECTION.find(i=>i.id===action.item);if(!i||isFreeItem(i)||w.slots[i.slot]!==i.id||!s.inventory.includes(i.id)||!Number.isFinite(action.scale)||action.scale<.05||action.scale>2)throw new Error('只能調整已穿戴配件的大小');w.wearScales[i.id]=action.scale;result={resized:i.id};break;}
  case"unequip-slot":{const w=ensureWardrobe(s);if(!Object.hasOwn(SLOT_LABELS,action.slot))throw new Error("無效的配件位置");if(w.slots[action.slot]===s.equipped)s.equipped=null;delete w.slots[action.slot];result={removed:action.slot};break;}
  default:throw new Error("未知的操作");
  }
