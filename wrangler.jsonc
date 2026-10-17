@@ -1,0 +1,12 @@
+{
+  "$schema": "./worker/node_modules/wrangler/config-schema.json",
+  "name": "cinnamoroll-math-api",
+  "main": "worker/index.js",
+  "account_id": "6d52c23ef69496aa7a077d402776a828",
+  "compatibility_date": "2026-10-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "secrets": {"required": ["ADMIN_PIN"]},
+  "observability": {"enabled": true, "head_sampling_rate": 1},
+  "d1_databases": [{"binding": "DB", "database_name": "cinnamoroll-math-adventure", "database_id": "8ee848e3-c1d7-484e-8c02-c616d8c48e2d", "migrations_dir": "worker/migrations"}]
+}

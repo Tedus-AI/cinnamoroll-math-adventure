@@ -1,4 +1,6 @@
-import {LEGACY_SLOTS,SCENES,MOTIONS,ensureWardrobe,useCollection} from "./wardrobe.js";
+import {LEGACY_SLOTS,SLOT_LABELS,SCENES,MOTIONS,ensureWardrobe,useCollection,placeProp,isFreeItem} from "./wardrobe.js";
+import {SKINS,ensureProgression,difficultyUnlocked} from './progression.js';
+import {EXTRA_ITEMS} from "./extra-items.js";
 import {seeded,divisionSteps,generateDivision} from "./modules/division.js";
 import {registerMathModule,mathModule} from "./math-modules.js";
 export {seeded,divisionSteps,generateDivision};
@@ -29,7 +31,7 @@ const ORIGINAL_COLLECTION = [
 {id:"shell",name:"彩虹貝殼",emoji:"🐚",desc:"聽見海邊的聲音",cost:80},
 {id:"book",name:"魔法除法書",emoji:"📘",desc:"每一頁都是新的發現",cost:100}
 ];
-export const COLLECTION=[...ORIGINAL_COLLECTION.map(i=>({...i,kind:"accessory",slot:LEGACY_SLOTS[i.id]})),...SCENES,...MOTIONS];
+export const COLLECTION=[...ORIGINAL_COLLECTION.map(i=>({...i,kind:isFreeItem({slot:LEGACY_SLOTS[i.id]})?'prop':'accessory',slot:LEGACY_SLOTS[i.id]})),...EXTRA_ITEMS,...SCENES,...MOTIONS,...SKINS];
 export const MODULES = [{id:"division",name:"除法冒險",status:"ready"},{id:"mixed",name:"四則混合",status:"planned"},{id:"fractions",name:"分數樂園",status:"planned"}];
 export function taipeiDay(now=Date.now()) {return new Date(now+8*3600000).toISOString().slice(0,10);}
 export function newState(name="小小冒險家") {
@@ -39,8 +41,10 @@ export function dailyReset(s,now=Date.now()) {
  const day=taipeiDay(now);if(s.daily?.day!==day)s.daily={day,four:0,levels:0,review:0,claimed:[]};return s.daily;
 }
 export function playerLevel(s){return 1+Math.floor(s.xp/100);}
-export function worldUnlocked(s,w){return w<=2||Boolean(s.levels[(w-1)+":5"]);}
-export function stageUnlocked(s,w,l){return worldUnlocked(s,w)&&(l===0||Boolean(s.levels[w+":"+(l-1)]));}
+export function worldUnlocked(s,w){return Boolean(s.adminUnlocked)||w<=2||Boolean(s.levels[(w-1)+":5"]);}
+export function stageUnlocked(s,w,l){return worldUnlocked(s,w)&&(Boolean(s.adminUnlocked)||l===0||Boolean(s.levels[w+":"+(l-1)]));}
+// Only the authenticated server calls this for an administrator session.
+export function unlockAdministrator(s){s.adminUnlocked=true;for(const i of COLLECTION)addItem(s,i.id);ensureWardrobe(s);return s;}
 export function badges(s){
  ensureWardrobe(s);
  if(s.history.length)addItem(s,"cloud");
@@ -59,6 +63,7 @@ export function startRun(s,options={},rng=Math.random,now=Date.now()) {
  const world=Number(options.world??2),stage=Number(options.stage??0);let tier=Number(options.tier)||3,boss=false,questions=[];
  if(kind==="level"){
  if(!Number.isInteger(world)||!WORLDS[world]||!Number.isInteger(stage)||stage<0||stage>5||!stageUnlocked(s,world,stage))throw new Error("這一關尚未解鎖");
+ if(!difficultyUnlocked(s,world,stage,difficulty))throw new Error('先完成上一個難度，才能開啟這個挑戰');
  tier=WORLDS[world].tier;boss=stage===5;
  }else if(kind==="review"){
  if(!s.mistakes.length)for(let i=0;i<2;i++)questions.push(generateDivision(3,rng));
@@ -71,7 +76,7 @@ export function startRun(s,options={},rng=Math.random,now=Date.now()) {
 }
 export function publicQuestion(q){return {a:q.a,b:q.b,id:q.id,topic:q.topic,digits:q.digits,tier:q.tier};}
 export function publicState(s){
- const copy=JSON.parse(JSON.stringify(s));ensureWardrobe(copy);
+ const copy=JSON.parse(JSON.stringify(s));ensureWardrobe(copy);ensureProgression(copy);
  if(copy.run)copy.run.questions=copy.run.questions.map(publicQuestion);
  copy.mistakes=copy.mistakes.map(m=>({...m,question:publicQuestion(m.question)}));
  return copy;
@@ -89,10 +94,12 @@ export function applyAction(s,action,rng=Math.random,now=Date.now()){
  case"claim":result=claim(s,action.key);break;
  case"buy":{const item=COLLECTION.find(x=>x.id===action.item);if(!item||!item.cost)throw new Error("無法購買這個收藏");if(s.inventory.includes(item.id))throw new Error("已經收藏了");if(s.coins<item.cost)throw new Error("雲朵幣還不夠");s.coins-=item.cost;addItem(s,item.id);result={bought:item.id};break;}
  case"equip":{useCollection(s,action.item,COLLECTION);result={equipped:action.item};break;}
- case"unequip-slot":{const w=ensureWardrobe(s);if(!Object.values(LEGACY_SLOTS).includes(action.slot))throw new Error("無效的配件位置");if(w.slots[action.slot]===s.equipped)s.equipped=null;delete w.slots[action.slot];result={removed:action.slot};break;}
+ case"place-prop":{placeProp(s,action,COLLECTION);result={placed:action.item};break;}
+ case"resize-wear":{const w=ensureWardrobe(s),i=COLLECTION.find(i=>i.id===action.item);if(!i||isFreeItem(i)||w.slots[i.slot]!==i.id||!s.inventory.includes(i.id)||!Number.isFinite(action.scale)||action.scale<.5||action.scale>2)throw new Error('只能調整已穿戴配件的大小');w.wearScales[i.id]=action.scale;result={resized:i.id};break;}
+ case"unequip-slot":{const w=ensureWardrobe(s);if(!Object.hasOwn(SLOT_LABELS,action.slot))throw new Error("無效的配件位置");if(w.slots[action.slot]===s.equipped)s.equipped=null;delete w.slots[action.slot];result={removed:action.slot};break;}
  default:throw new Error("未知的操作");
  }
- s.actions.push(action.id);s.actions=s.actions.slice(-100);return result;
+ ensureWardrobe(s);s.actions.push(action.id);s.actions=s.actions.slice(-100);return result;
 }
 function answerRun(s,a,now){
  const run=s.run;if(!run)throw new Error("沒有進行中的冒險");
@@ -109,8 +116,8 @@ function answerRun(s,a,now){
  run.answers.push({a:q.a,b:q.b,q:q.q,r:q.r,perfect});run.index++;run.questionAttempts=0;
  if(run.index===run.questions.length){
  const stars=run.perfect===run.questions.length?3:run.perfect>=Math.ceil(run.questions.length*.6)?2:1;
- const key=run.world+":"+run.stage;const first=run.kind==="level"&&!s.levels[key];
- if(run.kind==="level"){s.levels[key]=Math.max(s.levels[key]||0,stars);s.daily.levels++;}
+ const key=run.world+":"+run.stage,dk=key+':'+run.difficulty,records=ensureProgression(s);const first=run.kind==="level"&&!records[dk];
+ if(run.kind==="level"){records[dk]=Math.max(records[dk]||0,stars);s.levels[key]=Math.max(s.levels[key]||0,stars);s.daily.levels++;}
  const bonus=first?(run.boss?60:25):10;s.coins+=bonus;s.xp+=run.boss?40:20;
  const entry={outcome:"won",difficulty:run.difficulty,playerHp:run.playerHp,maxPlayerHp:run.maxPlayerHp,bossHp:run.bossHp,maxBossHp:run.maxBossHp,kind:run.kind,world:run.world,stage:run.stage,boss:run.boss,stars,perfect:run.perfect,count:run.questions.length,bonus,first,at:now,answers:run.answers};
  s.lastResult=entry;s.history.push(entry);s.history=s.history.slice(-60);s.run=null;badges(s);

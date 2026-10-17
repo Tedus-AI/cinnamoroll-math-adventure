@@ -54,3 +54,11 @@ next-env.d.ts
 /.codex/
 /outputs/
 /work/
+
+/.deploy-tools/
+/.migration-private/
+*.tsbuildinfo
+/.dev.vars*
+/worker/node_modules/
+/worker/.wrangler/
+/worker/.build/

@@ -1,0 +1,17 @@
+{
+  "name": "cinnamoroll-math-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test.mjs",
+    "preview": "node preview.mjs",
+    "bundle": "node bundle.mjs",
+    "types": "wrangler types environment.d.ts --config ../wrangler.jsonc --include-runtime false",
+    "deploy": "wrangler deploy --config ../wrangler.jsonc"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.1",
+    "miniflare": "5.20261012.0-beta",
+    "wrangler": "4.151.0"
+  }
+}

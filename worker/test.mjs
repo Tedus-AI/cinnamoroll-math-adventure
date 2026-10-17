@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import {fileURLToPath} from 'node:url';
+import {localRuntime} from './local-runtime.mjs';
+const {mf,db}=await localRuntime('4826');
+try{
+ const base=new URL('/api/game',await mf.ready).href;
+ const integration=await promisify(execFile)(process.execPath,[fileURLToPath(new URL('../tests/api.integration.mjs',import.meta.url))],{env:{...process.env,TEST_API_BASE:base},timeout:60000});
+ console.log(integration.stdout.trim());
+ const call=async(action,body,token,extra={})=>{
+  const res=await fetch(base+'/'+action,{method:body?'POST':'GET',headers:{Origin:'http://127.0.0.1:5173','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...extra},...(body?{body:JSON.stringify(body)}:{})});
+  return {status:res.status,data:await res.json()};
+ };
+ const reg=await call('register',{username:'role_test',pin:'93816542',role:'admin',adminUnlocked:true});
+ assert.equal(reg.status,200);assert.equal(reg.data.user.role,'player');assert.equal(reg.data.state.adminUnlocked,undefined);
+ const forged=await call('event',{id:'forged',version:0,type:'start',options:{kind:'level',world:5,stage:5},adminUnlocked:true,role:'admin'},reg.data.token);
+ assert.equal(forged.status,400);
+ await db.prepare("UPDATE saves SET state=json_set(state,'$.adminUnlocked',json('true')) WHERE user_id=?").bind(reg.data.user.id).run();
+ const sanitized=await call('me',null,reg.data.token);assert.equal(sanitized.data.state.adminUnlocked,undefined);
+ const reserved=await call('register',{username:'system_admin',pin:'93816542'});assert.equal(reserved.status,409);
+ const wrong=await call('admin-login',{pin:'0000'});assert.equal(wrong.status,401);
+ const admin=await call('admin-login',{pin:'4826'});assert.equal(admin.status,200);assert.equal(admin.data.user.role,'admin');
+ assert.equal(admin.data.state.inventory.length,59);assert.equal(admin.data.state.adminUnlocked,true);
+ assert.equal(admin.data.state.correct,0);assert.deepEqual(admin.data.state.levels,{});
+ const battle=await call('event',{id:'last-boss',version:0,type:'start',options:{kind:'level',world:5,stage:5}},admin.data.token);
+ assert.equal(battle.status,200);assert.equal(battle.data.state.run.boss,true);
+ const equipped=await call('event',{id:'new-prop',version:1,type:'equip',item:'moon-window'},admin.data.token);
+ assert.equal(equipped.status,200);assert.ok(equipped.data.state.wardrobe.props['moon-window']);
+ const saved=await call('me',null,admin.data.token);assert.ok(saved.data.state.wardrobe.props['moon-window']);
+ const wrongRoute=await call('login',{username:'system_admin',pin:'4826'});assert.equal(wrongRoute.status,401);
+ const pinChange=await call('pin',{pin:'93816542'},admin.data.token);assert.equal(pinChange.status,403);
+ await call('logout',{},admin.data.token);assert.equal((await call('me',null,admin.data.token)).status,401);
+ for(let i=0;i<3;i++)assert.equal((await call('admin-login',{pin:'0000'})).status,401);
+ assert.equal((await call('admin-login',{pin:'4826'})).status,429);
+ const oversized=await call('register',{username:'huge',pin:'93816542',padding:'a'.repeat(17000)});assert.equal(oversized.status,413);
+ console.log('PASS: admin secret, role isolation, 59 unlocks, final boss access, prop persistence, session revocation, brute-force limit, and body limit.');
+}finally{await mf.dispose();}
