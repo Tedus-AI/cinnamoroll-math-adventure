@@ -1,5 +1,8 @@
 // Item positions are authored against the 512×512 neutral Cinnamoroll pose.
-export const SLOT_LABELS={head:'頭頂',ear:'右耳',neck:'頸部',chest:'胸前',hand:'手邊',float:'身旁',ground:'腳邊'};
+import {rewardSkins} from './progression.js';
+export const SLOT_LABELS={head:'帽子',ear:'耳飾',eyes:'眼鏡',neck:'頸飾',chest:'胸針',hand:'手持',back:'背包',outfit:'衣服',float:'自由擺放',ground:'自由擺放','room-left':'自由擺放','room-right':'自由擺放','room-floor':'自由擺放','room-top':'自由擺放'};
+export const isFreeItem=i=>i&&(i.slot==='float'||i.slot==='ground'||i.slot?.startsWith('room-'));
+export function defaultPlacement(slot){return {x:slot==='room-left'?23:slot==='room-right'?77:slot==='float'?80:50,y:slot==='room-top'?25:slot==='float'?36:73,scale:1,z:1};}
 export const LEGACY_SLOTS={cloud:'ground',rainbow:'float',snow:'ear',moon:'chest',crown:'head',tea:'hand',ribbon:'ear',master:'ground',star:'ear',flower:'ear',bow:'neck',hat:'head',cupcake:'hand',balloon:'float',shell:'ground',book:'hand'};
 export const SCENES=[
 {id:'scene-bedroom',name:'雲朵臥室',emoji:'🛏️',file:'bedroom',desc:'初次見面的專屬小房間',starter:true},
@@ -19,20 +22,34 @@ export const MOTIONS=[
 ].map(i=>({...i,kind:'motion',cost:0,desc:i.desc||'初始動作 · 可加入隨機演出'}));
 export const STARTER_ITEMS=[...SCENES,...MOTIONS].filter(i=>i.starter).map(i=>i.id);
 export function ensureWardrobe(s){
+ rewardSkins(s);
  for(const id of STARTER_ITEMS)if(!s.inventory.includes(id))s.inventory.push(id);
  if(!s.wardrobe){s.wardrobe={slots:{},scene:'scene-bedroom',motions:MOTIONS.filter(i=>i.starter).map(i=>i.id)};if(s.equipped&&s.inventory.includes(s.equipped)&&LEGACY_SLOTS[s.equipped])s.wardrobe.slots[LEGACY_SLOTS[s.equipped]]=s.equipped;}
  for(const i of [...SCENES,...MOTIONS])if(i.unlock?.(s)&&!s.inventory.includes(i.id))s.inventory.push(i.id);
- return s.wardrobe;
+ const w=s.wardrobe;w.props??={};w.layout??={};w.wearScales??={};w.skin??='original';
+ for(const [slot,id] of Object.entries(w.slots))if(isFreeItem({slot})){w.props[id]=w.layout[id]||defaultPlacement(slot);delete w.slots[slot];}
+ return w;
 }
 export function useCollection(s,item,catalog){
  const w=ensureWardrobe(s);
- if(item===null){w.slots={};s.equipped=null;return;}
+ if(item===null){w.slots={};w.props={};s.equipped=null;return;}
+ if(item==='skin-original'){w.skin='original';return;}
  const i=catalog.find(i=>i.id===item);if(!i||!s.inventory.includes(item))throw new Error('尚未擁有這個收藏');
- if(i.kind==='scene')w.scene=item;
+ if(i.kind==='skin')w.skin=item;
+ else if(isFreeItem(i))w.props[item]=w.layout[item]||defaultPlacement(i.slot);
+ else if(i.kind==='scene')w.scene=item;
  else if(i.kind==='motion'){
   if(w.motions.includes(item)){if(w.motions.length===1)throw new Error('至少保留一種待機動作');w.motions=w.motions.filter(id=>id!==item);}
   else w.motions.push(item);
  }else{w.slots[i.slot]=item;if(i.wear)s.equipped=item;}
 }
-export function isUsing(s,i){const w=ensureWardrobe(s);return i.kind==='scene'?w.scene===i.id:i.kind==='motion'?w.motions.includes(i.id):w.slots[i.slot]===i.id;}
+export function isUsing(s,i){const w=ensureWardrobe(s);return i.kind==='skin'?w.skin===i.id:isFreeItem(i)?Boolean(w.props[i.id]):i.kind==='scene'?w.scene===i.id:i.kind==='motion'?w.motions.includes(i.id):w.slots[i.slot]===i.id;}
+export function placeProp(s,a,catalog){
+ const w=ensureWardrobe(s),i=catalog.find(i=>i.id===a.item);
+ if(!isFreeItem(i)||!s.inventory.includes(a.item)||!w.props[a.item])throw new Error('請先擺上已擁有的物件');
+ if(a.remove){delete w.props[a.item];return;}
+ const p={x:a.x,y:a.y,scale:a.scale,z:a.z};
+ if(!Object.values(p).every(Number.isFinite)||p.x<5||p.x>95||p.y<8||p.y>88||p.scale<.5||p.scale>1.6||![1,3].includes(p.z))throw new Error('擺放位置超出房間範圍');
+ w.props[a.item]=p;w.layout[a.item]={...p};
+}
 export function randomMotion(s,last,rng=Math.random){const ids=ensureWardrobe(s).motions;const pool=ids.filter(id=>id!==last);return (pool.length?pool:ids)[Math.floor(rng()*(pool.length||ids.length))];}

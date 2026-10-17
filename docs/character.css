@@ -1,0 +1,29 @@
+.item-art{width:100%;height:100%;display:block}.closet-icon .item-art{width:86%;height:86%}.inline-art{display:inline-block;vertical-align:middle;width:1.3em;height:1.3em}.currency .inline-art{width:28px;height:28px}.slot-chip .inline-art{width:24px;height:24px}.room-prop{position:absolute;pointer-events:none;filter:drop-shadow(0 5px 4px #7692b633);z-index:1;width:24%;max-width:150px}.prop-room-left{left:2%;bottom:14%}.prop-room-right{right:2%;bottom:14%}.prop-room-floor{left:51%;bottom:9%;width:16%}.prop-room-top{right:6%;top:13%;width:19%}.doll-platform{z-index:2}.room-caption,.room-name{z-index:3}.closet-tabs{flex-wrap:wrap}.closet-tabs button{min-width:65px}.admin-badge{background:#f2e7ff;color:#735899;border:1px solid #d9c3ed;border-radius:12px;padding:7px 11px;font-size:12px}.music-now{padding:12px;border-radius:14px;background:#eff5ff;font-size:13px;margin:14px 0}.audio-settings-grid{display:grid;gap:16px}.audio-settings-grid section{padding:14px;border:1px solid #c6dbed;border-radius:16px}.audio-settings-grid h3{margin-bottom:10px}.room-prop.item-music-box{animation:prop-rock 4s ease-in-out infinite}.room-prop.item-cloud-swing{transform-origin:50% 0;animation:prop-rock 5s ease-in-out infinite}
+
+.character-live{display:block;position:relative;width:100%;height:100%;aspect-ratio:1;isolation:isolate}
+.original-character{display:block;width:100%;height:100%;overflow:hidden;position:relative;z-index:1}.original-rig{position:absolute;inset:0;width:100%;height:100%;z-index:1;opacity:0;pointer-events:none}
+.rig-ready .original-character{visibility:hidden}.rig-ready .original-rig{opacity:1}
+.rig-accessory{position:absolute;display:block;aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none;z-index:3;filter:drop-shadow(0 2px 2px #64523325)}
+.rig-slot-back{z-index:0}.rig-slot-head,.rig-slot-ear,.rig-slot-eyes{animation:accessory-nod 4.2s ease-in-out infinite}.rig-slot-hand{animation:accessory-wave 2.8s ease-in-out infinite}
+.doll-rig[data-motion]{animation:none}.doll-rig .character-live{transform-origin:50% 80%}
+.doll-rig[data-motion=breathe] .character-live{animation:original-breathe 4s ease-in-out infinite}
+.doll-rig[data-motion=peek] .character-live{animation:original-peek 5s ease-in-out infinite}
+.doll-rig[data-motion=hop] .character-live{animation:original-hop 2.4s ease-in-out infinite}
+.doll-rig[data-motion=float] .character-live{transform-origin:50% 55%;animation:original-float 9s ease-in-out infinite}
+.doll-rig[data-motion=sleep] .character-live{animation:original-sleep 5.5s ease-in-out infinite}
+.doll-rig[data-motion=dance] .character-live{animation:original-dance 1.6s ease-in-out infinite}
+.doll-rig[data-motion=cheer] .character-live{animation:original-cheer 1.2s ease-in-out infinite}
+.doll-rig[data-motion=sleep] .sleep-bubbles{top:27%;left:62%;z-index:5}
+@keyframes original-breathe{0%,100%{transform:rotate(-1deg) scaleY(1)}50%{transform:rotate(1deg) scaleY(1.025)}}
+@keyframes original-peek{0%,50%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+@keyframes original-hop{0%,64%,100%{transform:translateY(0) scale(1)}12%{transform:translateY(7px) scale(1.06,.91)}32%{transform:translateY(-55px) scale(.98,1.04)}48%{transform:translateY(0) scale(1.06,.94)}56%{transform:translateY(-7px) scale(1)}}
+@keyframes original-float{0%{transform:translate(0,0) rotate(0)}25%{transform:translate(-16px,-28px) rotate(-12deg)}42%{transform:translate(10px,-45px) rotate(0)}68%{transform:translate(14px,-40px) rotate(360deg)}85%{transform:translate(-8px,-18px) rotate(365deg)}100%{transform:translate(0,0) rotate(360deg)}}
+@keyframes original-sleep{0%,100%{transform:translateY(6px) rotate(0) scaleY(1)}50%{transform:translateY(9px) rotate(1deg) scaleY(.985)}}
+@keyframes original-dance{0%,100%{transform:translateX(-12px) rotate(-5deg)}25%{transform:translateY(-7px) rotate(0)}50%{transform:translateX(12px) rotate(5deg)}75%{transform:translateY(-7px) rotate(0)}}
+@keyframes original-cheer{0%,100%{transform:translateY(0) scale(1)}40%{transform:translateY(-12px) scale(1.035)}70%{transform:translateY(0) scale(1)}}
+@keyframes accessory-nod{50%{transform:translate(-50%,-51%) rotate(1deg)}}@keyframes accessory-wave{50%{transform:translate(-48%,-52%) rotate(-4deg)}}@keyframes accessory-hop{50%{transform:translate(-50%,-65%)}}@keyframes accessory-float{50%{transform:translate(-50%,-62%)}}
+@keyframes prop-rock{50%{transform:rotate(3deg)}}
+@media(prefers-reduced-motion:reduce){.character-live,.character-live *,.room-prop{animation:none!important}}
+.closet-icon{background:linear-gradient(145deg,#fffdf7,#e9f2ff);border:1px solid #fff9;box-shadow:inset 0 1px 4px #fff}.closet-icon .item-art{width:96%;height:96%}.room-prop{max-width:210px;width:30%}.prop-room-left{left:1%;bottom:15%}.prop-room-right{right:0;bottom:14%}.prop-room-top{top:15%;right:4%;width:22%}.prop-room-floor{left:52%;bottom:10%;width:19%}
+
+.motion-preview{position:relative;padding:0!important;overflow:hidden;cursor:pointer}.motion-preview span{position:absolute;bottom:0;left:0;right:0;background:#ffffffd9;font-size:9px;line-height:15px;color:#54769d}.room-caption #motion-caption{line-height:1.6}.room-caption .small-button{flex-shrink:0}

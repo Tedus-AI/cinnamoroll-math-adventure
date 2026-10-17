@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS players (
+ id TEXT PRIMARY KEY NOT NULL, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
+ salt TEXT NOT NULL, pin_hash TEXT NOT NULL, recovery_hash TEXT NOT NULL, created_at INTEGER NOT NULL,
+ role TEXT NOT NULL DEFAULT 'player' CHECK (role IN ('player','admin'))
+);
+CREATE TABLE IF NOT EXISTS saves (
+ user_id TEXT PRIMARY KEY NOT NULL REFERENCES players(id), state TEXT NOT NULL,
+ version INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sessions (
+ hash TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL REFERENCES players(id), expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id);
+CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY NOT NULL, count INTEGER NOT NULL, expires_at INTEGER NOT NULL);

@@ -1,1 +1,1 @@
-export const API_BASE="https://cinnamoroll-math-adventure.bronzelion1.chatgpt.site/api/game";
+export const API_BASE="https://cinnamoroll-math-api.tedus-ai-games.workers.dev/api/game";

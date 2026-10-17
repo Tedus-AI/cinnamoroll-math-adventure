@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newState,applyAction,seeded,divisionSteps,publicState} from '../public/game/engine.js';
-function start(difficulty=0){const s=newState();s.levels['2:4']=3;applyAction(s,{id:'start',type:'start',options:{kind:'level',world:2,stage:5,difficulty}},seeded(42));return s;}
+function start(difficulty=0){const s=newState();s.levels['2:4']=3;s.progressionVersion=2;s.difficultyStars={'2:5:0':1,'2:5:1':1};applyAction(s,{id:'start',type:'start',options:{kind:'level',world:2,stage:5,difficulty}},seeded(42));return s;}
 test('wrong guided steps damage once per action, defeat gives no clear reward, retry restores life',()=>{
  const s=start(2),q=s.run.questions[0],wrong=String((divisionSteps(q.a,q.b)[0].q+1)%10);
  const a={id:'hit1',type:'step-answer',questionId:q.id,step:0,phase:0,value:wrong};
