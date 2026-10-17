@@ -12,7 +12,7 @@ export function dressedCinna(state){
 export {roomMarkup,itemCard} from './room-layout.js';
 export function stopRoom(){clearTimeout(timer);timer=null;}
 export function animateRoom(s,forced=null){
- stopRoom();const rig=document.querySelector('.doll-rig');if(!rig||document.hidden)return;
+ stopRoom();if(document.querySelector('.editing-appearance')){timer=setTimeout(()=>animateRoom(s,forced),500);return;}const rig=document.querySelector('.doll-rig');if(!rig||document.hidden)return;
  lastMotion=forced&&s.inventory.includes(forced)?forced:randomMotion(s,lastMotion);const motion=MOTIONS.find(i=>i.id===lastMotion);
  if(!motion)return;
  rig.dataset.motion=motion.motion;applyMotionPose(rig,motion.motion);

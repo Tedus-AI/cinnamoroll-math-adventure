@@ -1,3 +1,4 @@
+import {isIOS,tabletMode,platformLabel,pageFullscreen,switchPlatform,togglePageFullscreen} from './platform.js';
 import {DIFFICULTIES,SKINS,difficultyStars,difficultyUnlocked,totalStars,ensureProgression} from './progression.js';
 import {bindRoomPlacement} from './room-placement.js';
 import {mountCharacters} from "./character.js";
@@ -53,7 +54,7 @@ function nav(){return [["home","☁️","冒險地圖"],["daily","🌟","每日�
 function render(){
  root.onpointerdown=null;
  stopRoom();ensureWardrobe(state);ensureProgression(state);dailyReset(state);const w=view==="play"?state.run?.world??2:view==="world"?selectedWorld:2;document.body.dataset.view=view;
- root.innerHTML='<div class="shell">'+scenery(w,"app-scenery")+'<aside class="rail"><div class="rail-logo">'+cinna()+'</div>'+nav()+'<div class="rail-foot">小小練習<br>大大進步 ♡</div></aside><div class="page"><header class="topbar"><div class="brand">大耳狗的雲朵除法冒險<small>CLOUD MATH ADVENTURE</small></div><div class="top-actions"><button class="sound-button" data-action="sound-settings" aria-label="音樂與音效設定">'+(audioSettings().enabled?"🔊":"🔇")+'</button><button class="fullscreen-button" data-action="focus-mode">'+(focusMode?"離開專注模式":"專注模式")+'</button><button class="fullscreen-button" data-action="fullscreen">'+(document.fullscreenElement||document.webkitFullscreenElement?"⤡ 離開全螢幕":"⛶ 全螢幕")+'</button><div class="currency">雲朵幣 <b>'+state.coins+'</b></div><button class="profile" data-action="account"><span class="avatar">☁️</span><span class="profile-name">'+(account?safe(state.name):"登入雲端")+'</span></button></div></header><main class="content">'+(view==="home"?home():view==="daily"?dailyPage():view==="world"?worldPage():view==="play"?play():view==="practice"?practice():view==="dressing"?roomMarkup(state,closetTab,closetPage):view==="collection"?collection():view==="report"?report():modules())+'</main><footer class="footer">非官方粉絲學習作品 · Cinnamoroll / Sanrio · 每一步都算進步。</footer></div></div>';if(busy)root.classList.add("busy");if(view==="dressing"){animateRoom(state);bindRoomPlacement(root,state,async (props,type="place-prop")=>{const r=await event(type,props);if(r)render();return Boolean(r);});}mountCharacters(root);
+ root.innerHTML='<div class="shell">'+scenery(w,"app-scenery")+'<aside class="rail"><div class="rail-logo">'+cinna()+'</div>'+nav()+'<div class="rail-foot">小小練習<br>大大進步 ♡</div></aside><div class="page"><header class="topbar"><div class="brand">大耳狗的雲朵除法冒險<small>CLOUD MATH ADVENTURE</small></div><div class="top-actions"><button class="fullscreen-button" data-action="platform" title="切換電腦與平板操作">'+platformLabel()+'</button><button class="sound-button" data-action="sound-settings" aria-label="音樂與音效設定">'+(audioSettings().enabled?"🔊":"🔇")+'</button><button class="fullscreen-button" data-action="focus-mode">'+(focusMode?"離開專注模式":"專注模式")+'</button><button class="fullscreen-button" data-action="fullscreen">'+(pageFullscreen()||document.fullscreenElement||document.webkitFullscreenElement?'⤡ 離開全螢幕':tabletMode()||isIOS?'⛶ 平板滿版':'⛶ 全螢幕')+'</button><div class="currency">雲朵幣 <b>'+state.coins+'</b></div><button class="profile" data-action="account"><span class="avatar">☁️</span><span class="profile-name">'+(account?safe(state.name):"登入雲端")+'</span></button></div></header><main class="content">'+(view==="home"?home():view==="daily"?dailyPage():view==="world"?worldPage():view==="play"?play():view==="practice"?practice():view==="dressing"?roomMarkup(state,closetTab,closetPage):view==="collection"?collection():view==="report"?report():modules())+'</main><footer class="footer">非官方粉絲學習作品 · Cinnamoroll / Sanrio · 每一步都算進步。</footer></div></div>';if(busy)root.classList.add("busy");if(view==="dressing"){animateRoom(state);bindRoomPlacement(root,state,async (props,type="place-prop")=>{const r=await event(type,props);if(r&&!["place-prop","resize-wear"].includes(type))render();return r?state.wardrobe:null;});}mountCharacters(root);
  const musicView=view==="play"&&state.run?.kind!=="level"?"practice":view;
  setMusicScene(musicView,w,view==="play"&&Boolean(state.run?.boss));
  root.querySelector(".currency").innerHTML=itemArt("coin","inline-art")+" <b>"+state.coins+"</b>";
@@ -204,6 +205,7 @@ document.addEventListener("click",async e=>{
  const a=el.dataset.action;if(!a)return;
  switch(a){
  case"fullscreen":await toggleFullscreen();break;
+ case"platform":await switchPlatform();render();toast(platformLabel()+"已啟用；點此按鈕可切換");break;
  case"focus-mode":focusMode=!focusMode;document.body.classList.toggle("focus-mode",focusMode);render();if(focusMode)toast("專注模式已開啟；系統狀態列仍由 iPadOS 控制");break;
  case"sound-settings":audioModal();break;
  case"motion-preview":if(view!=="dressing"){view="dressing";closetTab="motion";closetPage=0;render();}animateRoom(state,el.dataset.item);break;
@@ -272,9 +274,7 @@ if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch
 function pager(page,total,action){return '<div class="pager"><button class="secondary" data-action="'+action+'" data-page="'+(page-1)+'" '+(page<=0?"disabled":"")+'>← 上一頁</button><span>'+(page+1)+' / '+Math.max(1,total)+'</span><button class="secondary" data-action="'+action+'" data-page="'+(page+1)+'" '+(page>=total-1?"disabled":"")+'>下一頁 →</button></div>';}
 
 async function toggleFullscreen(){
- if(!(document.fullscreenElement||document.webkitFullscreenElement)&&!read("cloudmath:fullscreen-info",false)&&(/iPad|iPhone/.test(navigator.userAgent)||navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1)){
-  put("cloudmath:fullscreen-info",true);modal('<h2>iPad 的大畫面模式</h2><p>Safari 的原生全螢幕可能顯示時間、退出 X 與系統退出手勢，網頁無法移除。按下方按鈕繼續進入。</p><p>想減少誤觸，可使用上方「專注模式」；也可透過 Safari 分享 → 加入主畫面，從遊戲圖示啟動。主畫面模式仍受 iPadOS 控制，不能保證隱藏時間。</p><button class="primary" data-action="fullscreen">進入原生全螢幕</button>');return;
- }
+ if(tabletMode()||isIOS){closeModal();await togglePageFullscreen();render();return;}
  closeModal();
  try{if(document.fullscreenElement||document.webkitFullscreenElement){const exit=document.exitFullscreen||document.webkitExitFullscreen;await exit.call(document);}
  else{const enter=document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen;if(!enter)throw new Error("unsupported");await enter.call(document.documentElement);}}

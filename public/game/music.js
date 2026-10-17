@@ -24,35 +24,39 @@ async function resumeMusic(){
   if(ctx.state==='running'&&enabled&&!document.hidden&&!playing)startMusic();
  }catch{}
 }
-function tone(midi,time,duration,level,type='sine'){
+function tone(midi,time,duration,level,type='sine',attack=.02){
  const osc=ctx.createOscillator(),gain=ctx.createGain(),freq=440*Math.pow(2,(midi-69)/12);
  osc.type=type;osc.frequency.setValueAtTime(freq,time);
- gain.gain.setValueAtTime(.0001,time);gain.gain.exponentialRampToValueAtTime(Math.max(.001,level),time+.02);
+ gain.gain.setValueAtTime(.0001,time);gain.gain.exponentialRampToValueAtTime(Math.max(.001,level),time+Math.min(attack,duration/3));
  gain.gain.exponentialRampToValueAtTime(.0001,time+duration);
  osc.connect(gain);gain.connect(bus);osc.start(time);osc.stop(time+duration+.03);
  voices.add(osc);osc.onended=()=>{voices.delete(osc);osc.disconnect();gain.disconnect();};
+}
+function instrument(midi,time,duration,level,name){
+ const partials={flute:[[0,1,'sine'],[12,.12,'sine']],harp:[[0,1,'triangle'],[12,.16,'sine']],steel:[[0,1,'sine'],[19,.28,'sine'],[28,.08,'sine']],bell:[[0,1,'sine'],[19,.32,'sine'],[31,.12,'sine']],strings:[[0,.8,'triangle'],[12,.22,'triangle']],brass:[[0,.8,'triangle'],[7,.18,'triangle'],[12,.3,'triangle']]};
+ for(const [offset,gain,type] of partials[name]||[[0,1,'sine']])tone(midi+offset,time,duration,level*gain,type,name==='strings'?.14:.02);
 }
 function schedule(){
  if(!ctx||ctx.state!=='running'||!playing||document.hidden)return;
  const track=MUSIC[playing],beat=60/track.bpm,half=beat/2;
  if(nextNote<ctx.currentTime-.5)nextNote=ctx.currentTime+.04;
  while(nextNote<ctx.currentTime+.32){
-  const i=step%track.melody.length,note=track.melody[i],bar=Math.floor(step/8)%track.chords.length,chord=track.root+track.chords[bar];
-  if(note!==null){
-   tone(track.root+note,nextNote,half*1.6,.16,track.timbre);
+  const i=step%track.melody.length,note=track.melody[i],bar=Math.floor(step/(track.beats||8))%track.chords.length,chord=track.root+track.chords[bar];
+  if(note!==null&&(!track.notes||track.notes[step%track.notes.length])){
+   instrument(track.root+note,nextNote,half*(track.length||1.6),.13,track.instrument);
    tone(track.root+note+12,nextNote+.005,half*.65,.025);
   }
-  if(step%4===0)tone(chord-12,nextNote,beat*1.8,.11,'triangle');
+  if(step%(track.beats||4)===0)tone(chord-12,nextNote,beat*1.8,.11,'triangle');
   if(step%2===0){
    const minor=track.boss||playing==='world-4';
-   const degree=[0,minor?3:4,7,12][Math.floor(step/2)%4];
+   const arp=track.arp||[0,minor?3:4,7,12],degree=arp[Math.floor(step/2)%arp.length];
    tone(chord+degree,nextNote+.025,beat*1.25,.045);
   }
   if(track.boss&&step%2===0){
    tone(step%4===0?31:43,nextNote,.1,.16,'triangle');
    tone(91,nextNote+.01,.04,.018,'triangle');
   }
-  step++;nextNote+=half;
+  nextNote+=half*(1+(step%2===0?1:-1)*(track.swing||0));step++;
  }
 }
 function startMusic(){
