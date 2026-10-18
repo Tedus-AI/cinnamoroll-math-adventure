@@ -21,7 +21,7 @@ export function fitAttachments(parent,pose,t=0,motion=''){
  for(const el of parent.querySelectorAll('[data-wear-slot]')){
   const slot=el.dataset.wearSlot,p=fitFor(slot,pose,el.dataset.wearItem);if(!p)continue;
   const head=['head','ear','eyes'].includes(slot),nod=head&&pose===0?(.018+(motion==='peek'?.11:0))*Math.sin(t*1.25):0;
-  let [x,y,w,h]=p;
+  let [x,y,w,h]=p;x+=Number(el.dataset.offsetX)||0;y+=Number(el.dataset.offsetY)||0;
   if(nod){const dx=x-50.8,dy=y-60;x=50.8+dx*Math.cos(nod)-dy*Math.sin(nod);y=60+dx*Math.sin(nod)+dy*Math.cos(nod);if(motion==='peek')x+=1.37*Math.sin(t*1.25);}
   const breath=slot==='outfit'&&pose===0?.5*Math.sin(t*1.8):0;
   el.style.left=x+'%';el.style.top=(y-breath)+'%';el.style.width=w+'%';el.style.height=(h+breath)+'%';

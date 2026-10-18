@@ -1,4 +1,4 @@
-import {isIOS,tabletMode,platformLabel,pageFullscreen,switchPlatform,togglePageFullscreen} from './platform.js';
+import {isIOS,tabletMode,togglePageFullscreen} from './platform.js';
 import {DIFFICULTIES,SKINS,difficultyStars,difficultyUnlocked,totalStars,ensureProgression} from './progression.js';
 import {bindRoomPlacement} from './room-placement.js';
 import {mountCharacters} from "./character.js";
@@ -54,9 +54,9 @@ function nav(){return [["home","☁️","冒險地圖"],["daily","🌟","每日�
 function render(){
  root.onpointerdown=null;
  stopRoom();ensureWardrobe(state);ensureProgression(state);dailyReset(state);const w=view==="play"?state.run?.world??2:view==="world"?selectedWorld:2;document.body.dataset.view=view;
- root.innerHTML='<div class="shell">'+scenery(w,"app-scenery")+'<aside class="rail"><div class="rail-logo">'+cinna()+'</div>'+nav()+'<div class="rail-foot">小小練習<br>大大進步 ♡</div></aside><div class="page"><header class="topbar"><div class="brand">大耳狗的雲朵除法冒險<small>CLOUD MATH ADVENTURE</small></div><div class="top-actions"><button class="fullscreen-button" data-action="platform" title="切換電腦與平板操作">'+platformLabel()+'</button><button class="sound-button" data-action="sound-settings" aria-label="音樂與音效設定">'+(audioSettings().enabled?"🔊":"🔇")+'</button><button class="fullscreen-button" data-action="focus-mode">'+(focusMode?"離開專注模式":"專注模式")+'</button><button class="fullscreen-button" data-action="fullscreen">'+(pageFullscreen()||document.fullscreenElement||document.webkitFullscreenElement?'⤡ 離開全螢幕':tabletMode()||isIOS?'⛶ 平板滿版':'⛶ 全螢幕')+'</button><div class="currency">雲朵幣 <b>'+state.coins+'</b></div><button class="profile" data-action="account"><span class="avatar">☁️</span><span class="profile-name">'+(account?safe(state.name):"登入雲端")+'</span></button></div></header><main class="content">'+(view==="home"?home():view==="daily"?dailyPage():view==="world"?worldPage():view==="play"?play():view==="practice"?practice():view==="dressing"?roomMarkup(state,closetTab,closetPage):view==="collection"?collection():view==="report"?report():modules())+'</main><footer class="footer">非官方粉絲學習作品 · Cinnamoroll / Sanrio · 每一步都算進步。</footer></div></div>';if(busy)root.classList.add("busy");if(view==="dressing"){animateRoom(state);bindRoomPlacement(root,state,async (props,type="place-prop")=>{const r=await event(type,props);if(r&&!["place-prop","resize-wear"].includes(type))render();return r?state.wardrobe:null;});}mountCharacters(root);
+ root.innerHTML='<div class="shell">'+scenery(w,"app-scenery")+'<aside class="rail"><div class="rail-logo">'+cinna()+'</div>'+nav()+'<div class="rail-foot">小小練習<br>大大進步 ♡</div></aside><div class="page"><header class="topbar"><div class="brand">大耳狗的雲朵除法冒險<small>CLOUD MATH ADVENTURE</small></div><div class="top-actions"><button class="sound-button" data-action="sound-settings" aria-label="音樂與音效設定">'+(audioSettings().enabled?"🔊":"🔇")+'</button><button class="fullscreen-button" data-action="focus-mode">'+(focusMode?"離開專注模式":"專注模式")+'</button>'+(tabletMode()?'':'<button class="fullscreen-button" data-action="fullscreen">'+(document.fullscreenElement||document.webkitFullscreenElement?'⤡ 離開全螢幕':'⛶ 全螢幕')+'</button>')+'<div class="currency">雲朵幣 <b>'+state.coins+'</b></div><button class="profile" data-action="account"><span class="avatar">☁️</span><span class="profile-name">'+(account?safe(state.name):"登入雲端")+'</span></button></div></header><main class="content">'+(view==="home"?home():view==="daily"?dailyPage():view==="world"?worldPage():view==="play"?play():view==="practice"?practice():view==="dressing"?roomMarkup(state,closetTab,closetPage):view==="collection"?collection():view==="report"?report():modules())+'</main><footer class="footer">非官方粉絲學習作品 · Cinnamoroll / Sanrio · 每一步都算進步。</footer></div></div>';if(busy)root.classList.add("busy");if(view==="dressing"){animateRoom(state);bindRoomPlacement(root,state,async (props,type="place-prop")=>{const r=await event(type,props);if(r&&!["place-prop","resize-wear"].includes(type))render();return r?state.wardrobe:null;});}mountCharacters(root);
  const musicView=view==="play"&&state.run?.kind!=="level"?"practice":view;
- setMusicScene(musicView,w,view==="play"&&Boolean(state.run?.boss));
+ setMusicScene(musicView,w,view==="play"&&Boolean(state.run?.boss),state.wardrobe.scene);
  root.querySelector(".currency").innerHTML=itemArt("coin","inline-art")+" <b>"+state.coins+"</b>";
  if(account?.user.role==="admin")root.querySelector(".top-actions").insertAdjacentHTML("afterbegin",'<span class="admin-badge">管理員 · 全部解鎖</span>');
 }
@@ -177,7 +177,7 @@ async function authSubmit(){
  if(mode==="pin"){account.token=data.token;put("cloudmath:account",account);closeModal();recoveryModal(data.recovery);}
  else{account={user:data.user,token:data.token,version:data.version};state=data.state;version=data.version;status="雲端已儲存";stash();closeModal();view="home";render();if(data.recovery)recoveryModal(data.recovery);else toast("歡迎回來，"+state.name+" ♡");}
  }catch(e){$("#auth-error")?$("#auth-error").textContent=e.message:toast(e.message);button.disabled=false;}
- finally{busy=false;}
+ finally{busy=false;root.classList.remove("busy");button.disabled=false;}
 }
 function recoveryModal(code){
  modal('<h2>請讓家長收好復原碼</h2><p>忘記數字密碼時，可以用這組代碼登入。它只會在這裡顯示，請先保存。</p><div class="recovery" id="recovery-code">'+safe(code)+'</div><div class="modal-actions"><button class="secondary" data-action="download-recovery">下載復原碼</button><button class="primary" data-action="close">已收好，開始冒險</button></div>');
@@ -205,7 +205,7 @@ document.addEventListener("click",async e=>{
  const a=el.dataset.action;if(!a)return;
  switch(a){
  case"fullscreen":await toggleFullscreen();break;
- case"platform":await switchPlatform();render();toast(platformLabel()+"已啟用；點此按鈕可切換");break;
+
  case"focus-mode":focusMode=!focusMode;document.body.classList.toggle("focus-mode",focusMode);render();if(focusMode)toast("專注模式已開啟；系統狀態列仍由 iPadOS 控制");break;
  case"sound-settings":audioModal();break;
  case"motion-preview":if(view!=="dressing"){view="dressing";closetTab="motion";closetPage=0;render();}animateRoom(state,el.dataset.item);break;
@@ -280,12 +280,13 @@ async function toggleFullscreen(){
  else{const enter=document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen;if(!enter)throw new Error("unsupported");await enter.call(document.documentElement);}}
  catch{modal('<h2>在 iPad 開啟大畫面</h2><p>目前的瀏覽器無法直接切換全螢幕。請用 Safari 開啟此遊戲，點「分享」→「加入主畫面」，再從主畫面的遊戲圖示啟動。</p><p>加入主畫面後，遊戲會以獨立視窗開啟。橫向、直向都能繼續同一題。</p><button class="primary" data-action="close">知道了</button>');}
 }
+window.addEventListener("gameplatformchange",()=>render());
 document.addEventListener("fullscreenchange",()=>render());
 document.addEventListener("webkitfullscreenchange",()=>render());
 
 function audioModal(){
  const a=audioSettings(),m=musicSettings();
  const levels=(action,value,choices)=>'<div class="audio-levels">'+choices.map(([v,n])=>'<button class="secondary '+(value===v?'chosen':'')+'" data-action="'+action+'" data-value="'+v+'">'+n+'</button>').join('')+'</div>';
- modal('<h2>音樂與音效</h2><p>每個世界都有自己的旋律，魔王登場也會切換戰鬥曲。</p><div class="music-now">目前曲目：'+safe(m.title)+' · '+(m.enabled?(m.playing?'播放中':'點一下畫面開始播放'):'音樂已關閉')+'</div><div class="audio-settings-grid"><section><h3>背景音樂</h3><button class="primary" data-action="music-toggle">'+(m.enabled?'關閉背景音樂':'開啟背景音樂')+'</button>'+levels("music-volume",m.volume,[[.1,"輕柔"],[.22,"適中"],[.4,"響亮"]])+'</section><section><h3>按鍵與冒險音效</h3><button class="secondary" data-action="sound-toggle">'+(a.enabled?'關閉音效':'開啟音效')+'</button>'+levels("volume",a.volume,[[.15,"輕柔"],[.3,"適中"],[.6,"響亮"]])+'</section></div><p>設定會保留在這台裝置。切到其他分頁時音樂會暫停。</p>');
+ modal('<h2>音樂與音效</h2><p>每個世界都有自己的旋律，魔王登場也會切換戰鬥曲。</p><div class="music-now">目前曲目：'+safe(m.title)+' · '+(m.enabled?(m.playing?'播放中':'點一下畫面開始播放'):'音樂已關閉')+'</div><div class="audio-settings-grid"><section><h3>背景音樂</h3><button class="primary" data-action="music-toggle">'+(m.enabled?'關閉背景音樂':'開啟背景音樂')+'</button>'+levels("music-volume",m.volume,[[.25,"輕柔"],[.5,"適中"],[1,"最大"]])+'</section><section><h3>按鍵與冒險音效</h3><button class="secondary" data-action="sound-toggle">'+(a.enabled?'關閉音效':'開啟音效')+'</button>'+levels("volume",a.volume,[[.25,"輕柔"],[.5,"適中"],[1,"最大"]])+'</section></div><p>設定會保留在這台裝置。切到其他分頁時音樂會暫停。</p>');
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopRoom();else if(view==='dressing')animateRoom(state);});

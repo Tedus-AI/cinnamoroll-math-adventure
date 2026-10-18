@@ -7,7 +7,7 @@ let timer,lastMotion=null;
 const getItem=id=>COLLECTION.find(i=>i.id===id);
 export function dressedCinna(state){
  const w=ensureWardrobe(state);
- return '<div class="doll-rig">'+animatedCharacter(w.slots,0,w.skin,w.wearScales)+'<span class="sleep-bubbles" aria-hidden="true">z Z</span><span class="doll-hearts" aria-hidden="true">♡ ✧ ♡</span></div>';
+ return '<div class="doll-rig">'+animatedCharacter(w.slots,0,w.skin,w.wearScales,w.wearOffsets)+'<span class="sleep-bubbles" aria-hidden="true">z Z</span><span class="doll-hearts" aria-hidden="true">♡ ✧ ♡</span></div>';
 }
 export {roomMarkup,itemCard} from './room-layout.js';
 export function stopRoom(){clearTimeout(timer);timer=null;}
