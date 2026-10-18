@@ -49,7 +49,7 @@ export function placeProp(s,a,catalog){
  if(!isFreeItem(i)||!s.inventory.includes(a.item)||!w.props[a.item])throw new Error('請先擺上已擁有的物件');
  if(a.remove){delete w.props[a.item];return;}
  const p={x:a.x,y:a.y,scale:a.scale,z:a.z};
- if(!Object.values(p).every(Number.isFinite)||p.x<5||p.x>95||p.y<8||p.y>88||p.scale<.5||p.scale>1.6||![1,3].includes(p.z))throw new Error('擺放位置超出房間範圍');
+ if(!Object.values(p).every(Number.isFinite)||p.x<0||p.x>100||p.y<0||p.y>100||p.scale<.05||p.scale>1.6||![1,3].includes(p.z))throw new Error('擺放位置超出房間範圍');
  w.props[a.item]=p;w.layout[a.item]={...p};
 }
 export function randomMotion(s,last,rng=Math.random){const ids=ensureWardrobe(s).motions;const pool=ids.filter(id=>id!==last);return (pool.length?pool:ids)[Math.floor(rng()*(pool.length||ids.length))];}

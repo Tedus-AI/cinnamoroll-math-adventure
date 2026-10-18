@@ -1,3 +1,4 @@
+import {isIOS,tabletMode} from './platform.js';
 // The original PNG is the only character artwork. A textured mesh deforms its
 // eyes, mouth, ears and limbs without redrawing or replacing the silhouette.
 import {SKINS} from './progression.js';
@@ -88,7 +89,7 @@ const vertexSource=[
 ' gl_Position=vec4((p.x+64.0)/320.0-1.0,1.0-(p.y+64.0)/320.0,0.0,1.0);',
 '}'
 ].join('\n');
-const fragmentSource='precision mediump float; uniform sampler2D uImage; uniform vec3 uTint; uniform float uRainbow; uniform float uTime; varying vec2 vUV; void main(){vec4 c=texture2D(uImage,vUV);float light=min(c.r,min(c.g,c.b));float white=smoothstep(.55,.95,light);vec3 rainbow=.77+.23*cos(6.28318*(vUV.x*2.0+vUV.y*.7+uTime*.025+vec3(0.0,.33,.67)));vec3 tint=mix(uTint,rainbow,uRainbow);c.rgb=mix(c.rgb,c.rgb*tint,white);gl_FragColor=c;}';
+const fragmentSource='precision mediump float; uniform sampler2D uImage; uniform vec3 uTint; uniform float uRainbow; uniform float uTime; varying vec2 vUV; void main(){vec4 c=texture2D(uImage,vUV);float light=min(c.r,min(c.g,c.b));float white=smoothstep(.55,.95,light);vec3 rainbow=.77+.23*cos(6.28318*(vUV.x*2.0+vUV.y*.7+uTime*.025+vec3(0.0,.33,.67)));vec3 tint=mix(uTint,rainbow,uRainbow);c.rgb=mix(c.rgb,c.rgb*tint,white);gl_FragColor=vec4(c.rgb*c.a,c.a);}';
 const active=new Map();
 let imagePromise,frame=null,lastFrame=0;
 function imageReady(){
@@ -100,7 +101,10 @@ function shader(gl,type,source){
  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){gl.deleteShader(s);throw new Error('Character shader unavailable');}return s;
 }
 function createRenderer(canvas,img){
- const gl=canvas.getContext('webgl',{alpha:true,premultipliedAlpha:false,antialias:true,preserveDrawingBuffer:false});
+ // On touch devices, present through a transparent 2D canvas to avoid Safari WebGL layer compositing artifacts.
+ const surface=(isIOS||tabletMode())?document.createElement('canvas'):canvas;
+ const presentation=surface!==canvas?canvas.getContext('2d',{alpha:true}):null;
+ const gl=surface.getContext('webgl',{alpha:true,premultipliedAlpha:true,antialias:false,preserveDrawingBuffer:false});
  if(!gl)return null;
  const program=gl.createProgram(),vs=shader(gl,gl.VERTEX_SHADER,vertexSource),fs=shader(gl,gl.FRAGMENT_SHADER,fragmentSource);
  gl.attachShader(program,vs);gl.attachShader(program,fs);gl.linkProgram(program);
@@ -120,14 +124,14 @@ function createRenderer(canvas,img){
  const time=gl.getUniformLocation(program,'uTime'),motion=gl.getUniformLocation(program,'uMotion'),poseUniform=gl.getUniformLocation(program,'uPose');
  const parent=canvas.parentElement,skin=SKINS.find(s=>s.id===parent.dataset.skin);let lastName='',started=0;
  gl.uniform3fv(gl.getUniformLocation(program,'uTint'),skin?.rgb||[1,1,1]);gl.uniform1f(gl.getUniformLocation(program,'uRainbow'),skin?.rainbow?1:0);
- canvas.addEventListener('webglcontextlost',()=>{parent.classList.remove('rig-ready');active.delete(canvas);},{once:true});
- canvas.addEventListener('webglcontextrestored',()=>{canvas.dataset.mounted='';mountCharacters(parent);},{once:true});
+ surface.addEventListener('webglcontextlost',()=>{parent.classList.remove('rig-ready');active.delete(canvas);},{once:true});
+ surface.addEventListener('webglcontextrestored',()=>{canvas.dataset.mounted='';mountCharacters(parent);},{once:true});
  return {
   draw(ms){
    if(parent.closest('.editing-appearance'))return;
    const bounds=canvas.getBoundingClientRect();if(bounds.bottom<0||bounds.top>innerHeight||bounds.width===0)return;
-   const size=Math.min(900,Math.max(128,Math.round(canvas.clientWidth*Math.min(devicePixelRatio||1,2))));
-   if(canvas.width!==size){canvas.width=size;canvas.height=size;gl.viewport(0,0,size,size);}
+   const size=Math.min(presentation?640:900,Math.max(128,Math.round(canvas.clientWidth*Math.min(devicePixelRatio||1,2))));
+   if(canvas.width!==size){canvas.width=size;canvas.height=size;surface.width=size;surface.height=size;gl.viewport(0,0,size,size);}
    const rig=canvas.closest('.doll-rig'),basePose=Number(parent.dataset.pose)||0;
    const name=rig?.dataset.motion||['breathe','float','peek','cheer','breathe','sleep'][basePose];
    const pose=rig?MOTION_POSES[name]??0:basePose;
@@ -135,6 +139,7 @@ function createRenderer(canvas,img){
    const kind=['breathe','peek','hop','float','sleep','dance','cheer'].indexOf(name);
    gl.uniform1f(time,(ms-started)/1000);gl.uniform1f(motion,Math.max(0,kind));gl.uniform1f(poseUniform,pose);gl.clear(gl.COLOR_BUFFER_BIT);
    gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0);
+   if(presentation){presentation.clearRect(0,0,size,size);presentation.drawImage(surface,0,0);}
    fitAttachments(parent,pose,(ms-started)/1000,name);
    parent.classList.add('rig-ready');canvas.dataset.motion=name;
   },
