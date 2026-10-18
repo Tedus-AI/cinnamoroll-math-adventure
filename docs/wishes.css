@@ -1,0 +1,9 @@
+.wish-button{background:linear-gradient(135deg,#fff0f5,#f3e8ff);border-color:#ddbfdf}
+#wish-form label{display:block;margin:15px 0 6px;font-weight:700}
+.wish-message{min-height:160px;resize:vertical;line-height:1.7;width:100%;-webkit-user-select:text;user-select:text}
+.wish-voice-row,.wish-letter-heading,.wish-letter-actions{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:10px}
+.wish-note{font-size:12px;line-height:1.6;color:#617d9a}
+.wish-inbox{display:grid;gap:15px;margin:16px 0}.wish-letter{border:1px solid #c6d9ec;background:#f5f9ff;border-radius:16px;padding:15px}
+.wish-letter small{display:block;color:#607a93;margin-top:8px;overflow-wrap:anywhere}
+.wish-letter-body{white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0;line-height:1.7}.wish-letter-heading strong{overflow-wrap:anywhere;flex:1;min-width:0}
+.wish-letter-actions{justify-content:flex-start}.wish-voice-row #wish-count{font-size:12px;color:#607a93}

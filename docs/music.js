@@ -1,7 +1,8 @@
 import {loadAudioPreferences,saveAudioPreferences} from './audio-preferences.js';
 import {MUSIC,musicTrack} from './music-score.js';
 let ctx,bus,timer,nextNote=0,step=0,current='home',playing=null,unlocked=false;
-let enabled=true,volume=1;
+let enabled=true,volume=1,voicePaused=false;
+export function setVoiceInput(active){voicePaused=active;if(active)stopMusic();else void resumeMusic();}
 const voices=new Set(),clamp=n=>Math.max(0,Math.min(1,Number(n)));
 try{({enabled,volume}=loadAudioPreferences(localStorage,'cloudmath:music'));}catch{}
 export function musicSettings(){return {enabled,volume,track:current,title:MUSIC[current].name,playing:playing===current&&ctx?.state==='running'};}
@@ -17,12 +18,12 @@ export function setMusicScene(view,world,boss,scene){
  current=key;stopMusic();if(unlocked&&enabled&&!document.hidden)void resumeMusic();
 }
 async function resumeMusic(){
- if(!unlocked||!enabled||document.hidden)return;
+ if(!unlocked||!enabled||voicePaused||document.hidden)return;
  try{
   const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
   ctx??=new C();
   if(ctx.state!=='running')await ctx.resume();
-  if(ctx.state==='running'&&enabled&&!document.hidden&&!playing)startMusic();
+  if(ctx.state==='running'&&enabled&&!voicePaused&&!document.hidden&&!playing)startMusic();
  }catch{}
 }
 function tone(midi,time,duration,level,type='sine',attack=.02){
@@ -61,7 +62,7 @@ function schedule(){
  }
 }
 function startMusic(){
- if(playing||!enabled||document.hidden)return;
+ if(playing||!enabled||voicePaused||document.hidden)return;
  bus=ctx.createGain();bus.gain.setValueAtTime(.0001,ctx.currentTime);bus.gain.linearRampToValueAtTime(volume,ctx.currentTime+.4);bus.connect(ctx.destination);
  playing=current;step=0;nextNote=ctx.currentTime+.05;schedule();timer=setInterval(schedule,80);
 }
