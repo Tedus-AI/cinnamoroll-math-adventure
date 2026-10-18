@@ -1,9 +1,10 @@
+import {createWishes} from './wishes.js';
 import {isIOS,tabletMode,togglePageFullscreen} from './platform.js';
 import {DIFFICULTIES,SKINS,difficultyStars,difficultyUnlocked,totalStars,ensureProgression} from './progression.js';
 import {bindRoomPlacement} from './room-placement.js';
 import {mountCharacters} from "./character.js";
 import {sound,unlockAudio,audioSettings,setAudio} from "./audio.js";
-import {musicSettings,setMusic,setMusicScene} from "./music.js";
+import {musicSettings,setMusic,setMusicScene,setVoiceInput} from "./music.js";
 import {itemArt} from "./item-art.js";
 import {ensureWardrobe} from "./wardrobe.js";
 import {roomMarkup,itemCard,animateRoom,stopRoom} from "./dressing-room.js";
@@ -20,6 +21,7 @@ let version=account?.version||0,view="home",selectedWorld=2,busy=false,status=ac
 let form=null,ui={mode:"guide",field:"quotient",quotient:"",remainder:"",guide:null,assisted:false,feedback:null,lastQ:null,focus:3,difficulty:0},toastTimer;
 let collectionPage=0,reportPage=0,reportTab="history",lessonPage=0,battleFx=null;
 const root=$("#app"),modalRoot=$("#modal");
+const wishes=createWishes({api,modal,getAccount:()=>account,getContext:()=>((tabletMode()?"平板版":"電腦版")+" · "+view),onVoice:setVoiceInput,notify:toast});
 function identity(){return account?.user.id||"guest";}
 function stash(){if(account){account.version=version;put("cloudmath:account",account);put("cloudmath:save:"+identity(),state);}else{guest=state;status=put("cloudmath:guest",state)?"訪客進度已儲存":"此瀏覽器無法儲存訪客進度";}}
 function toast(text){$("#toast").textContent=text;$("#toast").classList.add("visible");clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("#toast").classList.remove("visible"),3600);}
@@ -54,7 +56,7 @@ function nav(){return [["home","☁️","冒險地圖"],["daily","🌟","每日�
 function render(){
  root.onpointerdown=null;
  stopRoom();ensureWardrobe(state);ensureProgression(state);dailyReset(state);const w=view==="play"?state.run?.world??2:view==="world"?selectedWorld:2;document.body.dataset.view=view;
- root.innerHTML='<div class="shell">'+scenery(w,"app-scenery")+'<aside class="rail"><div class="rail-logo">'+cinna()+'</div>'+nav()+'<div class="rail-foot">小小練習<br>大大進步 ♡</div></aside><div class="page"><header class="topbar"><div class="brand">大耳狗的雲朵除法冒險<small>CLOUD MATH ADVENTURE</small></div><div class="top-actions"><button class="sound-button" data-action="sound-settings" aria-label="音樂與音效設定">'+(audioSettings().enabled?"🔊":"🔇")+'</button><button class="fullscreen-button" data-action="focus-mode">'+(focusMode?"離開專注模式":"專注模式")+'</button>'+(tabletMode()?'':'<button class="fullscreen-button" data-action="fullscreen">'+(document.fullscreenElement||document.webkitFullscreenElement?'⤡ 離開全螢幕':'⛶ 全螢幕')+'</button>')+'<div class="currency">雲朵幣 <b>'+state.coins+'</b></div><button class="profile" data-action="account"><span class="avatar">☁️</span><span class="profile-name">'+(account?safe(state.name):"登入雲端")+'</span></button></div></header><main class="content">'+(view==="home"?home():view==="daily"?dailyPage():view==="world"?worldPage():view==="play"?play():view==="practice"?practice():view==="dressing"?roomMarkup(state,closetTab,closetPage):view==="collection"?collection():view==="report"?report():modules())+'</main><footer class="footer">非官方粉絲學習作品 · Cinnamoroll / Sanrio · 每一步都算進步。</footer></div></div>';if(busy)root.classList.add("busy");if(view==="dressing"){animateRoom(state);bindRoomPlacement(root,state,async (props,type="place-prop")=>{const r=await event(type,props);if(r&&!["place-prop","resize-wear"].includes(type))render();return r?state.wardrobe:null;});}mountCharacters(root);
+ root.innerHTML='<div class="shell">'+scenery(w,"app-scenery")+'<aside class="rail"><div class="rail-logo">'+cinna()+'</div>'+nav()+'<div class="rail-foot">小小練習<br>大大進步 ♡</div></aside><div class="page"><header class="topbar"><div class="brand">大耳狗的雲朵除法冒險<small>CLOUD MATH ADVENTURE</small></div><div class="top-actions"><button class="fullscreen-button wish-button" data-action="wishes">💌 功能心願</button><button class="sound-button" data-action="sound-settings" aria-label="音樂與音效設定">'+(audioSettings().enabled?"🔊":"🔇")+'</button><button class="fullscreen-button" data-action="focus-mode">'+(focusMode?"離開專注模式":"專注模式")+'</button>'+(tabletMode()?'':'<button class="fullscreen-button" data-action="fullscreen">'+(document.fullscreenElement||document.webkitFullscreenElement?'⤡ 離開全螢幕':'⛶ 全螢幕')+'</button>')+'<div class="currency">雲朵幣 <b>'+state.coins+'</b></div><button class="profile" data-action="account"><span class="avatar">☁️</span><span class="profile-name">'+(account?safe(state.name):"登入雲端")+'</span></button></div></header><main class="content">'+(view==="home"?home():view==="daily"?dailyPage():view==="world"?worldPage():view==="play"?play():view==="practice"?practice():view==="dressing"?roomMarkup(state,closetTab,closetPage):view==="collection"?collection():view==="report"?report():modules())+'</main><footer class="footer">非官方粉絲學習作品 · Cinnamoroll / Sanrio · 每一步都算進步。</footer></div></div>';if(busy)root.classList.add("busy");if(view==="dressing"){animateRoom(state);bindRoomPlacement(root,state,async (props,type="place-prop")=>{const r=await event(type,props);if(r&&!["place-prop","resize-wear"].includes(type))render();return r?state.wardrobe:null;});}mountCharacters(root);
  const musicView=view==="play"&&state.run?.kind!=="level"?"practice":view;
  setMusicScene(musicView,w,view==="play"&&Boolean(state.run?.boss),state.wardrobe.scene);
  root.querySelector(".currency").innerHTML=itemArt("coin","inline-art")+" <b>"+state.coins+"</b>";
@@ -146,8 +148,8 @@ const accuracy=state.attempts?Math.round(state.correct/state.attempts*100):0,row
 return title("每一次練習，都留下小腳印","看看自己的進步，下一次再多懂一點點。")+'<div class="report-grid"><section class="panel"><h2>答對的四位數</h2><strong>'+state.fourCorrect+'</strong></section><section class="panel"><h2>答案提交正確率</h2><strong>'+accuracy+'%</strong></section><section class="panel"><h2>已完成關卡</h2><strong>'+Object.keys(state.levels).length+' / 36 · ★ '+totalStars(state)+' / 324</strong></section></div><div class="section-heading"><div class="report-tabs"><button class="secondary '+(reportTab==="history"?"chosen":"")+'" data-action="report-tab" data-tab="history">最近冒險</button><button class="secondary '+(reportTab==="mistakes"?"chosen":"")+'" data-action="report-tab" data-tab="mistakes">錯題本 · '+state.mistakes.length+'</button></div><button class="primary" data-action="review">開始複習 →</button></div><section class="panel history-panel">'+(rows.length?rows.slice(reportPage*5,reportPage*5+5).map(r=>reportTab==="mistakes"?'<div class="history-row"><span>'+r.question.a+' ÷ '+r.question.b+'<small>答對就能從錯題本畢業</small></span><span class="pill">答錯 '+r.errors+' 次</span></div>':'<div class="history-row"><span>'+(r.kind==="level"?WORLDS[r.world].name+" · "+(r.boss?"魔王關":"第 "+(r.stage+1)+" 關"):r.kind==="review"?"錯題複習":"自由練習")+'<small>'+new Date(r.at).toLocaleDateString("zh-TW",{timeZone:"Asia/Taipei"})+' · '+r.perfect+' / '+r.count+' 題完美作答</small></span><span class="stars">'+"★".repeat(r.stars)+"☆".repeat(3-r.stars)+'</span></div>').join(""):'<div class="empty">☁️ '+(reportTab==="history"?"你的第一場冒險，會從這裡開始。":"沒有待複習的錯題，繼續冒險吧！")+'</div>')+'</section>'+pager(reportPage,pages,"report-page");
 }
 function modules(){return title("下一站，還有更多數學世界","目前開放除法冒險；其他主題正在規劃。","MORE WORLDS TO COME")+'<div class="module-grid">'+MODULES.map((m,i)=>'<section class="module-card"><span>'+["☁️","➕","🍰"][i]+'</span><h2>'+m.name+'</h2><p>'+["四位數除法為主，二、三位數可以暖身。","未來練習運算順序、括號與四則混合。","未來練習分數大小、通分與分數運算。"][i]+'</p>'+(i===0?'<button class="primary" data-action="nav" data-view="practice">現在去練習 →</button>':'<span class="pill">尚未開放</span>')+'</section>').join("")+'</div>';}
-function modal(content,cls=""){modalRoot.innerHTML='<div class="modal-backdrop"><section class="modal-card '+cls+'" role="dialog" aria-modal="true"><button class="close" data-action="close" aria-label="關閉">×</button>'+content+'</section></div>';const close=modalRoot.querySelector(".close");close?.focus();mountCharacters(modalRoot);}
-function closeModal(){form=null;modalRoot.innerHTML="";}
+function modal(content,cls=""){wishes.close();modalRoot.innerHTML='<div class="modal-backdrop"><section class="modal-card '+cls+'" role="dialog" aria-modal="true"><button class="close" data-action="close" aria-label="關閉">×</button>'+content+'</section></div>';const close=modalRoot.querySelector(".close");close?.focus();mountCharacters(modalRoot);}
+function closeModal(){wishes.close();form=null;modalRoot.innerHTML="";}
 function resultModal(){const r=state.lastResult;if(!r)return;const lost=r.outcome==="lost";sound(lost?"defeat":r.boss?"bossWin":"clear");modal((r.boss?arena(r,r):cinna(state.wardrobe,"",3))+'<div class="eyebrow">'+(lost?"LET’S TRY AGAIN":"A LITTLE WIN, A BIG SMILE")+'</div><h2>'+(lost?"這次先休息，再挑戰一次！":r.boss?"烏雲散開，世界放晴了！":"又完成一段小冒險！")+'</h2>'+(lost?'<p>魔王還有 '+r.bossHp+' 點生命。這次沒有通關，先前練習得到的獎勵會保留。</p>':'<p>'+DIFFICULTIES[r.difficulty??0]+'難度 · 本次星星</p><div class="result-stars">'+"★".repeat(r.stars)+"☆".repeat(3-r.stars)+'</div><p>雲朵幣 通關獎勵 +'+r.bonus+' · '+r.perfect+' / '+r.count+' 題完美作答</p>')+'<div class="modal-actions"><button class="secondary" data-action="result-map">回到地圖</button><button class="primary" data-action="'+(lost?"boss-retry":"result-next")+'">'+(lost?"重新挑戰魔王 ↻":"再冒險一關 →")+'</button></div>',"result");}
 function hint(full=false,page=0){const q=currentQ();if(!q)return;ui.assisted=true;if(ui.guide){ui.guide.assisted=true;stashWork();}const steps=targets(q);lessonPage=Math.max(0,Math.min(page,steps.length-1));const s=steps[lessonPage];modal('<div class="eyebrow">LET’S THINK TOGETHER</div><h2>'+(full?"一起看這題的直式":"先找一點小線索")+'</h2><p>'+q.a+' ÷ '+q.b+' · 先想一想除數的倍數。</p>'+(full?'<div class="lesson-step"><b>第 '+(lessonPage+1)+' / '+steps.length+' 輪</b><br>'+s.value+' ÷ '+q.b+' → 商 '+s.q+'<br>'+q.b+' × '+s.q+' = '+s.product+'<br>'+s.value+' − '+s.product+' = '+s.remainder+(s.next!==null?'<br>拉下 '+s.next+'，下一輪看 '+(s.remainder*10+s.next):"")+'</div>'+pager(lessonPage,steps.length,"lesson-page"):'<div class="lesson-step">① 每一位的商只能是 0～9。<br>② 除數 × 這位的商，不能比目前要除的數大。<br>③ 相減後，剩下的數要比除數小。<br>④ 拉下下一位，商是 0 時也要寫出來。</div><div class="multiples">'+[1,2,3,4,5,6,7,8,9].map(n=>'<span>'+q.b+' × '+n+' = '+q.b*n+'</span>').join("")+'</div>')+'<p>看過提示仍可通關；這題會記為輔助作答。</p><button class="primary submit" data-action="close">我再試一次 ♡</button>');}
 async function begin(options){
@@ -204,6 +206,7 @@ document.addEventListener("click",async e=>{
  if(el.dataset.digit!==undefined){digit(el.dataset.digit);return;}
  const a=el.dataset.action;if(!a)return;
  switch(a){
+ case"wishes":closeModal();wishes.open();break;
  case"fullscreen":await toggleFullscreen();break;
 
  case"focus-mode":focusMode=!focusMode;document.body.classList.toggle("focus-mode",focusMode);render();if(focusMode)toast("專注模式已開啟；系統狀態列仍由 iPadOS 控制");break;
@@ -260,6 +263,7 @@ document.addEventListener("click",async e=>{
 });
 document.addEventListener("keydown",e=>{
  if(["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName)||e.metaKey||e.ctrlKey||e.altKey)return;
+ if(modalRoot.children.length&&!form){if(e.key==="Escape")closeModal();return;}
  if(/^[0-9]$/.test(e.key)){if(form||view==="play"){e.preventDefault();digit(e.key);}}
  else if(e.key==="Enter"&&!form&&view==="play"){e.preventDefault();submit();}
  else if(e.key==="Backspace"&&!form&&view==="play"){e.preventDefault();if(ui.mode==="guide"){ui.guide.entered=ui.guide.entered.slice(0,-1);stashWork();}else ui[ui.field]=ui[ui.field].slice(0,-1);render();}
@@ -267,6 +271,7 @@ document.addEventListener("keydown",e=>{
 });
 setInterval(()=>{const el=$("#elapsed");if(el&&state.run){const seconds=Math.max(0,Math.floor((Date.now()-state.run.startedAt)/1000));el.textContent="⏱ "+Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");}},1000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&account&&!busy&&view!=="play")refresh();});
+window.addEventListener("pagehide",()=>wishes.close());
 window.addEventListener("online",()=>{if(account&&!busy)refresh();});
 render();if(account)refresh();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
@@ -289,4 +294,4 @@ function audioModal(){
  const levels=(action,value,choices)=>'<div class="audio-levels">'+choices.map(([v,n])=>'<button class="secondary '+(value===v?'chosen':'')+'" data-action="'+action+'" data-value="'+v+'">'+n+'</button>').join('')+'</div>';
  modal('<h2>音樂與音效</h2><p>每個世界都有自己的旋律，魔王登場也會切換戰鬥曲。</p><div class="music-now">目前曲目：'+safe(m.title)+' · '+(m.enabled?(m.playing?'播放中':'點一下畫面開始播放'):'音樂已關閉')+'</div><div class="audio-settings-grid"><section><h3>背景音樂</h3><button class="primary" data-action="music-toggle">'+(m.enabled?'關閉背景音樂':'開啟背景音樂')+'</button>'+levels("music-volume",m.volume,[[.25,"輕柔"],[.5,"適中"],[1,"最大"]])+'</section><section><h3>按鍵與冒險音效</h3><button class="secondary" data-action="sound-toggle">'+(a.enabled?'關閉音效':'開啟音效')+'</button>'+levels("volume",a.volume,[[.25,"輕柔"],[.5,"適中"],[1,"最大"]])+'</section></div><p>設定會保留在這台裝置。切到其他分頁時音樂會暫停。</p>');
 }
-document.addEventListener('visibilitychange',()=>{if(document.hidden)stopRoom();else if(view==='dressing')animateRoom(state);});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){wishes.stopVoice();stopRoom();}else if(view==='dressing')animateRoom(state);});

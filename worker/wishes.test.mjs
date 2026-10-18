@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import {localRuntime} from './local-runtime.mjs';
+const {mf,db}=await localRuntime('4826');
+try{
+ const base=new URL('/api/game/',await mf.ready);
+ const call=async(path,body,token)=>{const res=await fetch(new URL(path,base),{method:body?'POST':'GET',headers:{Origin:'http://127.0.0.1:5173','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});return {status:res.status,data:await res.json()};};
+ const guest={id:crypto.randomUUID(),category:'bug',title:'測試回報',message:"測試內容 <script>alert('x')</script>",context:'平板版 · dressing'};
+ assert.equal((await call('wishes',guest)).status,200);
+ assert.equal((await call('wishes',guest)).data.duplicate,true);
+ assert.equal((await db.prepare('SELECT count(*) AS n FROM wishes').first()).n,1);
+ assert.equal((await call('wishes',{...guest,message:'changed'})).status,409);
+ assert.equal((await call('wishes',{...guest,id:crypto.randomUUID(),message:'x'.repeat(2001)})).status,400);
+ assert.equal((await call('wishes',{...guest,id:crypto.randomUUID(),title:' '})).status,400);
+ assert.equal((await call('wishes')).status,401);
+ const player=await call('register',{username:'wish_player',name:'玩家',pin:'93816542'});
+ assert.equal(player.status,200);
+ const own={...guest,id:crypto.randomUUID(),category:'feature',sender:'冒充管理員',role:'admin'};
+ assert.equal((await call('wishes',own,player.data.token)).status,200);
+ assert.equal((await db.prepare('SELECT sender FROM wishes WHERE id=?').bind(own.id).first()).sender,'玩家');
+ assert.equal((await call('wishes',null,player.data.token)).status,403);
+ assert.equal((await call('wish-status',{id:guest.id,status:'done'},player.data.token)).status,403);
+ const admin=await call('admin-login',{pin:'4826'});assert.equal(admin.status,200);
+ let inbox=await call('wishes',null,admin.data.token);assert.equal(inbox.data.items.length,2);assert.equal(inbox.data.unread,2);
+ assert.equal(inbox.data.items.find(i=>i.id===guest.id).message,guest.message);
+ assert.equal((await call('wish-status',{id:guest.id,status:'read'},admin.data.token)).status,200);
+ assert.equal((await call('wish-status',{id:own.id,status:'done'},admin.data.token)).status,200);
+ inbox=await call('wishes',null,admin.data.token);assert.equal(inbox.data.unread,0);
+ assert.equal((await call('wish-status',{id:own.id,status:'invalid'},admin.data.token)).status,400);
+ assert.equal((await call('wishes?before=-1',null,admin.data.token)).status,400);
+ for(let i=0;i<20;i++)await db.prepare('INSERT INTO wishes (id,sender,category,title,message,context,created_at) VALUES (?,?,?,?,?,?,?)').bind(crypto.randomUUID(),'訪客','suggestion','分頁測試','test','desktop',Date.now()).run();
+ inbox=await call('wishes',null,admin.data.token);assert.equal(inbox.data.items.length,20);assert.ok(inbox.data.nextCursor);
+ const older=await call('wishes?before='+inbox.data.nextCursor,null,admin.data.token);assert.equal(older.data.items.length,2);assert.equal(older.data.nextCursor,null);
+ assert.ok(older.data.items.every(i=>!inbox.data.items.some(j=>j.id===i.id)));
+ let limited=false;for(let i=0;i<12;i++){const res=await call('wishes',{...guest,id:crypto.randomUUID()});if(res.status===429){limited=true;break;}}assert.ok(limited);
+ console.log('PASS: guest/player wishes, idempotency, validation, rate limits, admin-only inbox/status, pagination, and persistence.');
+}finally{await mf.dispose();}

@@ -1,3 +1,4 @@
+import {createWish,listWishes,updateWish} from './wishes.js';
 import {newState,publicState,applyAction,unlockAdministrator} from '../public/game/engine.js';
 
 const ORIGINS=new Set(['https://tedus-ai.github.io','https://cinnamoroll-math-adventure.bronzelion1.chatgpt.site','http://127.0.0.1:5173','http://localhost:5173']);
@@ -67,12 +68,14 @@ export default {
    const db=env.DB;if(!db)throw fail('資料庫尚未設定',503);
    if(req.method==='GET'){
     if(action==='health'){await db.prepare('SELECT 1 AS ok').first();return response(req,{ok:true,version:'adventure-v4',storage:'owner-cloudflare-d1'});}
+    if(action==='wishes')return response(req,await listWishes(db,await authorized(req,db),url.searchParams.get('before')));
     if(action!=='me')return response(req,{error:'找不到這個功能'},404);
     return response(req,await accountData(db,await authorized(req,db)));
    }
    if(req.method!=='POST')return response(req,{error:'不支援此操作'},405);
    const b=await readJson(req),ip=req.headers.get('CF-Connecting-IP')||'local';
    if(action==='admin-login')return await adminLogin(req,env,b,ip);
+   if(action==='wishes'){const sender=req.headers.has('Authorization')?await authorized(req,db):null;return response(req,await createWish(db,sender,b,ip,limit));}
    if(['register','login','recover'].includes(action)){
     const username=String(b.username||'').trim().toLowerCase();if(!/^[a-z0-9_]{3,24}$/.test(username))throw fail('帳號請用 3–24 個英文字母、數字或底線');
     await limit(db,'ip-auth:'+ip,40,3600000);await limit(db,'user-auth:'+username,8,600000);
@@ -96,6 +99,7 @@ export default {
     return response(req,{...await accountData(db,user),token:await tokenFor(db,user.id)});
    }
    const user=await authorized(req,db);
+   if(action==='wish-status')return response(req,await updateWish(db,user,b));
    if(action==='logout'){await db.prepare('DELETE FROM sessions WHERE hash=?').bind(await sha(req.headers.get('Authorization').slice(7))).run();return response(req,{ok:true});}
    if(action==='pin'){
     if(user.role==='admin')throw fail('管理員密碼由雲端設定管理',403);
