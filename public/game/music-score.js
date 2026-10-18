@@ -31,8 +31,16 @@ for(let w=0;w<6;w++){
  Object.assign(MUSIC['world-'+w],arrangements[w]);
  Object.assign(MUSIC['boss-'+w],arrangements[w],{beats:8,notes:[1,1,1,0,1,1,0,1],length:.8,swing:0});
 }
-export function musicTrack(view,world=0,boss=false){
- if(view==='dressing')return 'dressing';
+const roomScores={
+ 'scene-bedroom':{...make('雲朵臥室・星星搖籃曲',60,64,[19,null,16,12,14,null,16,null,19,21,19,null,16,14,12,null],[0,5,9,7]),instrument:'bell',beats:8,notes:[1,0,1,1,1,0,1,0],arp:[0,7,12,7],length:3,swing:0},
+ 'scene-cafe':{...make('甜點咖啡館・奶油午茶',65,102,[12,16,null,19,21,19,null,16,14,17,21,null,19,16,14,12],[0,9,2,7]),instrument:'harp',beats:8,notes:[1,1,0,1,1,1,0,1],arp:[0,4,7,11],length:1.1,swing:.2},
+ 'scene-beach':{...make('彩虹海灘・浪花假期',67,112,[19,12,16,null,19,21,24,null,23,19,16,14,12,null,19,null],[0,5,7,0]),instrument:'steel',beats:8,notes:[1,1,1,0,1,1,1,0],arp:[0,7,4,12],length:1.1,swing:.12},
+ 'scene-garden':{...make('星光花園・花瓣圓舞曲',62,90,[12,16,19,21,19,null,17,21,24,26,24,null,19,17,16,14,12,null],[0,5,9,7]),instrument:'flute',beats:6,notes:[1,1,1,1,1,0],arp:[0,4,7],length:1.9,swing:0},
+ 'scene-castle':{...make('月光城堡・銀月小夜曲',69,76,[12,null,15,19,22,null,24,22,20,19,17,null,15,14,12,null],[0,8,5,7]),instrument:'strings',beats:8,notes:[1,0,1,1,1,0,1,1],arp:[0,3,7,10],length:3,swing:0}
+};
+for(const [scene,score] of Object.entries(roomScores))MUSIC['room-'+scene]=score;
+export function musicTrack(view,world=0,boss=false,scene='scene-bedroom'){
+ if(view==='dressing')return 'room-'+(Object.hasOwn(roomScores,scene)?scene:'scene-bedroom');
  if(view==='practice')return 'practice';
  if(view==='world'||view==='play')return (boss?'boss-':'world-')+Math.max(0,Math.min(5,Number(world)||0));
  return 'home';

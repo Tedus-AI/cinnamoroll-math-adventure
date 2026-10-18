@@ -8,7 +8,7 @@ export const MOTION_POSES={breathe:0,peek:0,hop:3,float:1,sleep:5,dance:3,cheer:
 export function applyMotionPose(rig,name){
  const pose=MOTION_POSES[name]??0,art=rig.querySelector('.original-character');
  if(art)art.setAttribute('viewBox',(pose%3*512)+' '+(Math.floor(pose/3)*512)+' 512 512');
- const character=rig.querySelector('.character-live');if(character){character.dataset.sourcePose=String(pose);fitAttachments(character,pose);}
+ const character=rig.querySelector('.character-live');if(character){character.dataset.sourcePose=String(pose);character.dataset.motion=name;fitAttachments(character,pose);}
  const canvas=rig.querySelector('canvas');active.get(canvas)?.draw(performance.now());
 }
 const vertexSource=[
@@ -141,7 +141,7 @@ function createRenderer(canvas,img){
    gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0);
    if(presentation){presentation.clearRect(0,0,size,size);presentation.drawImage(surface,0,0);}
    fitAttachments(parent,pose,(ms-started)/1000,name);
-   parent.classList.add('rig-ready');canvas.dataset.motion=name;
+   parent.classList.add('rig-ready');parent.dataset.motion=name;canvas.dataset.motion=name;
   },
   dispose(){gl.deleteTexture(texture);gl.deleteBuffer(vertexBuffer);gl.deleteBuffer(indexBuffer);gl.deleteProgram(program);gl.getExtension('WEBGL_lose_context')?.loseContext();}
  };

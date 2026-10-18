@@ -28,6 +28,10 @@ try{
  const equipped=await call('event',{id:'new-prop',version:1,type:'equip',item:'moon-window'},admin.data.token);
  assert.equal(equipped.status,200);assert.ok(equipped.data.state.wardrobe.props['moon-window']);
  const saved=await call('me',null,admin.data.token);assert.ok(saved.data.state.wardrobe.props['moon-window']);
+ const hat=await call('event',{id:'wear-hat',version:2,type:'equip',item:'hat-starlight'},admin.data.token);assert.equal(hat.status,200);
+ const adjusted=await call('event',{id:'adjust-hat',version:3,type:'resize-wear',item:'hat-starlight',scale:1.02,x:1.5,y:-2},admin.data.token);assert.equal(adjusted.status,200);
+ const reloaded=await call('me',null,admin.data.token);
+ assert.deepEqual(reloaded.data.state.wardrobe.wearOffsets['hat-starlight'],{x:1.5,y:-2});assert.equal(reloaded.data.state.wardrobe.wearScales['hat-starlight'],1.02);
  const wrongRoute=await call('login',{username:'system_admin',pin:'4826'});assert.equal(wrongRoute.status,401);
  const pinChange=await call('pin',{pin:'93816542'},admin.data.token);assert.equal(pinChange.status,403);
  await call('logout',{},admin.data.token);assert.equal((await call('me',null,admin.data.token)).status,401);

@@ -30,3 +30,5 @@
 .resize-handle[data-corner=sw]{left:-7px;bottom:-7px;cursor:nesw-resize}.resize-handle[data-corner=se]{right:-7px;bottom:-7px;cursor:nwse-resize}
 .editing-appearance .character-live{animation-play-state:paused!important}
 .wear-edit-controls{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+
+.character-live[data-motion=float] .rig-slot-neck,.character-live[data-motion=float] .rig-slot-back,.character-live[data-motion=float] .rig-slot-outfit{display:none}

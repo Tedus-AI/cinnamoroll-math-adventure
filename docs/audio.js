@@ -1,9 +1,11 @@
+import {loadAudioPreferences,saveAudioPreferences} from './audio-preferences.js';
 // Local synthesized effects; no third-party audio requests or automatic playback.
 const scores={click:[[740,.035]],digit:[[880,.045]],step:[[784,.07],[988,.09]],correct:[[660,.08],[880,.08],[1175,.18]],wrong:[[294,.1],[247,.18]],attack:[[440,.05],[880,.07],[1568,.16]],hurt:[[185,.08],[130,.16]],clear:[[523,.12],[659,.12],[784,.12],[1047,.3]],bossWin:[[523,.1],[659,.1],[784,.1],[1047,.17],[1319,.3]],defeat:[[392,.14],[330,.14],[262,.3]],reward:[[1047,.08],[1319,.08],[1568,.24]],equip:[[698,.08],[1047,.15]],start:[[523,.08],[784,.18]]};
-let ctx,enabled=true,volume=.3,lastClick=0;
-try{const saved=JSON.parse(localStorage.getItem('cloudmath:audio'));if(saved){enabled=saved.enabled!==false;volume=Math.max(0,Math.min(1,Number(saved.volume)||.3));}}catch{}
+let ctx,lastClick=0;
+let enabled=true,volume=1;
+try{({enabled,volume}=loadAudioPreferences(localStorage,'cloudmath:audio'));}catch{}
 export function audioSettings(){return {enabled,volume};}
-export function setAudio(next){enabled=next.enabled??enabled;volume=next.volume??volume;try{localStorage.setItem('cloudmath:audio',JSON.stringify({enabled,volume}));}catch{}if(!enabled&&ctx?.state==='running')void ctx.suspend().catch(()=>{});}
+export function setAudio(next){enabled=next.enabled??enabled;volume=Number.isFinite(next.volume)?Math.max(0,Math.min(1,next.volume)):volume;try{saveAudioPreferences(localStorage,'cloudmath:audio',{enabled,volume});}catch{}if(!enabled&&ctx?.state==='running')void ctx.suspend().catch(()=>{});}
 export function unlockAudio(){if(!enabled)return;try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ctx??=new C();if(ctx.state==='suspended')void ctx.resume().catch(()=>{});}catch{}}
 export function sound(name){
  if(!enabled||document.hidden)return;unlockAudio();if(!ctx||ctx.state!=='running')return;

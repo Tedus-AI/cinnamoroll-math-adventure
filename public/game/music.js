@@ -1,18 +1,19 @@
+import {loadAudioPreferences,saveAudioPreferences} from './audio-preferences.js';
 import {MUSIC,musicTrack} from './music-score.js';
 let ctx,bus,timer,nextNote=0,step=0,current='home',playing=null,unlocked=false;
-let enabled=true,volume=.22;
-const voices=new Set(),clamp=n=>Math.max(0,Math.min(.7,Number(n)));
-try{const saved=JSON.parse(localStorage.getItem('cloudmath:music'));if(saved){enabled=saved.enabled!==false;if(Number.isFinite(saved.volume))volume=clamp(saved.volume);}}catch{}
+let enabled=true,volume=1;
+const voices=new Set(),clamp=n=>Math.max(0,Math.min(1,Number(n)));
+try{({enabled,volume}=loadAudioPreferences(localStorage,'cloudmath:music'));}catch{}
 export function musicSettings(){return {enabled,volume,track:current,title:MUSIC[current].name,playing:playing===current&&ctx?.state==='running'};}
 export function setMusic(next){
  enabled=next.enabled??enabled;if(Number.isFinite(next.volume))volume=clamp(next.volume);
- try{localStorage.setItem('cloudmath:music',JSON.stringify({enabled,volume}));}catch{}
+ try{saveAudioPreferences(localStorage,'cloudmath:music',{enabled,volume});}catch{}
  if(!enabled){stopMusic();return;}
  if(bus&&ctx)bus.gain.setTargetAtTime(volume,ctx.currentTime,.12);
  void resumeMusic();
 }
-export function setMusicScene(view,world,boss){
- const key=musicTrack(view,world,boss);if(key===current)return;
+export function setMusicScene(view,world,boss,scene){
+ const key=musicTrack(view,world,boss,scene);if(key===current)return;
  current=key;stopMusic();if(unlocked&&enabled&&!document.hidden)void resumeMusic();
 }
 async function resumeMusic(){

@@ -26,7 +26,7 @@ export function ensureWardrobe(s){
  for(const id of STARTER_ITEMS)if(!s.inventory.includes(id))s.inventory.push(id);
  if(!s.wardrobe){s.wardrobe={slots:{},scene:'scene-bedroom',motions:MOTIONS.filter(i=>i.starter).map(i=>i.id)};if(s.equipped&&s.inventory.includes(s.equipped)&&LEGACY_SLOTS[s.equipped])s.wardrobe.slots[LEGACY_SLOTS[s.equipped]]=s.equipped;}
  for(const i of [...SCENES,...MOTIONS])if(i.unlock?.(s)&&!s.inventory.includes(i.id))s.inventory.push(i.id);
- const w=s.wardrobe;w.props??={};w.layout??={};w.wearScales??={};w.skin??='original';
+ const w=s.wardrobe;w.props??={};w.layout??={};w.wearScales??={};w.wearOffsets??={};w.skin??='original';
  for(const [slot,id] of Object.entries(w.slots))if(isFreeItem({slot})){w.props[id]=w.layout[id]||defaultPlacement(slot);delete w.slots[slot];}
  return w;
 }

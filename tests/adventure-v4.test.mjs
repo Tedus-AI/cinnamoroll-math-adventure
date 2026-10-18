@@ -31,10 +31,10 @@ test('administrator unlocks all levels and collections without inventing learnin
  assert.throws(()=>applyAction(newState(),{id:'forged',type:'admin-login',adminUnlocked:true}));
 });
 test('all six worlds and bosses have independent original scores and valid routing',()=>{
- assert.equal(Object.keys(MUSIC).length,15);
- assert.equal(new Set(Object.values(MUSIC).map(x=>JSON.stringify(x.melody))).size,15);
+ assert.equal(Object.keys(MUSIC).length,20);
+ assert.equal(new Set(Object.values(MUSIC).map(x=>JSON.stringify(x.melody))).size,20);
  for(let w=0;w<6;w++){assert.equal(musicTrack('world',w),'world-'+w);assert.equal(musicTrack('play',w,true),'boss-'+w);}
- assert.equal(musicTrack('home'),'home');assert.equal(musicTrack('dressing'),'dressing');
+ assert.equal(musicTrack('home'),'home');assert.equal(musicTrack('dressing'),'room-scene-bedroom');
  assert.equal(musicTrack('practice'),'practice');
  for(const t of Object.values(MUSIC)){assert.ok(t.bpm>=60&&t.bpm<=150);assert.ok(t.melody.every(n=>n===null||Number.isInteger(n)));}
 });
