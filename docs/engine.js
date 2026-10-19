@@ -1,3 +1,4 @@
+import {CHARACTERS,towerRules,towerUnlocked,clearTower,expireTower} from './tower.js';
 import {LEGACY_SLOTS,SLOT_LABELS,SCENES,MOTIONS,ensureWardrobe,useCollection,placeProp,isFreeItem} from "./wardrobe.js";
 import {SKINS,ensureProgression,difficultyUnlocked} from './progression.js';
 import {EXTRA_ITEMS} from "./extra-items.js";
@@ -31,7 +32,7 @@ const ORIGINAL_COLLECTION = [
 {id:"shell",name:"彩虹貝殼",emoji:"🐚",desc:"聽見海邊的聲音",cost:80},
 {id:"book",name:"魔法除法書",emoji:"📘",desc:"每一頁都是新的發現",cost:100}
 ];
-export const COLLECTION=[...ORIGINAL_COLLECTION.map(i=>({...i,kind:isFreeItem({slot:LEGACY_SLOTS[i.id]})?'prop':'accessory',slot:LEGACY_SLOTS[i.id]})),...EXTRA_ITEMS,...SCENES,...MOTIONS,...SKINS];
+export const COLLECTION=[...ORIGINAL_COLLECTION.map(i=>({...i,kind:isFreeItem({slot:LEGACY_SLOTS[i.id]})?'prop':'accessory',slot:LEGACY_SLOTS[i.id]})),...EXTRA_ITEMS,...SCENES,...MOTIONS,...SKINS,...CHARACTERS];
 export const MODULES = [{id:"division",name:"除法冒險",status:"ready"},{id:"mixed",name:"四則混合",status:"planned"},{id:"fractions",name:"分數樂園",status:"planned"}];
 export function taipeiDay(now=Date.now()) {return new Date(now+8*3600000).toISOString().slice(0,10);}
 export function newState(name="小小冒險家") {
@@ -65,13 +66,16 @@ export function startRun(s,options={},rng=Math.random,now=Date.now()) {
  if(!Number.isInteger(world)||!WORLDS[world]||!Number.isInteger(stage)||stage<0||stage>5||!stageUnlocked(s,world,stage))throw new Error("這一關尚未解鎖");
  if(!difficultyUnlocked(s,world,stage,difficulty))throw new Error('先完成上一個難度，才能開啟這個挑戰');
  tier=WORLDS[world].tier;boss=stage===5;
+ }else if(kind==="tower"){
+ const rules=towerRules(options.floor);if(!towerUnlocked(s,rules.floor))throw new Error("先完成前一層，再繼續向上挑戰");tier=rules.tier;boss=rules.boss;
  }else if(kind==="review"){
  if(!s.mistakes.length)for(let i=0;i<2;i++)questions.push(generateDivision(3,rng));
  if(s.mistakes.length)questions=s.mistakes.slice(0,5).map(m=>({...m.question,id:"r"+m.question.id}));
  }else if(kind!=="practice")throw new Error("未知的冒險類型");
- if(!questions.length)for(let i=0;i<(boss?8:5);i++)questions.push(mathModule(s.module).generate({tier:Math.min(6,Math.max(1,tier+(difficulty===2&&tier>=3?1:0)))},rng));
+ if(!questions.length)for(let i=0;i<(kind==="tower"?towerRules(options.floor).count:boss?8:5);i++)questions.push(mathModule(s.module).generate({tier:Math.min(6,Math.max(1,tier+(kind!=="tower"&&difficulty===2&&tier>=3?1:0)))},rng));
  const id="run"+now+"-"+Math.floor(rng()*1e8);
  s.run={id,kind,world,stage,tier,difficulty,boss,questions,index:0,wrong:0,perfect:0,assisted:0,questionAttempts:0,startedAt:now,answers:[],combo:0,playerHp:boss?[5,4,3][difficulty]:null,maxPlayerHp:boss?[5,4,3][difficulty]:null,bossHp:boss?questions.length:null,maxBossHp:boss?questions.length:null};
+ if(kind==="tower"){const r=towerRules(options.floor);Object.assign(s.run,{floor:r.floor,world:r.world,difficulty:0,deadline:r.boss?now+r.seconds*1000:null,playerHp:r.boss?5:null,maxPlayerHp:r.boss?5:null});}
  s.lastResult=null;dailyReset(s,now);return s.run;
 }
 export function publicQuestion(q){return {a:q.a,b:q.b,id:q.id,topic:q.topic,digits:q.digits,tier:q.tier};}
@@ -86,7 +90,10 @@ export function applyAction(s,action,rng=Math.random,now=Date.now()){
  if(s.actions.includes(action.id))return {duplicate:true};
  dailyReset(s,now);ensureWardrobe(s);
  let result;
+ const expired=["answer","step-answer","tower-timeout"].includes(action.type)?expireTower(s,now):null;
+ if(expired){s.actions.push(action.id);s.actions=s.actions.slice(-100);return expired;}
  switch(action.type){
+ case"tower-timeout":result={waiting:true};break;
  case"start":result={run:startRun(s,action.options,rng,now)};break;
  case"abandon":s.run=null;result={abandoned:true};break;
  case"answer":result=answerRun(s,action,now);break;
@@ -116,15 +123,15 @@ function answerRun(s,a,now){
  run.combo++;s.correct++;if(q.digits===4){s.fourCorrect++;s.daily.four++;}
  if(run.kind==="review")s.daily.review++;
  s.mistakes=s.mistakes.filter(m=>m.question.a!==q.a||m.question.b!==q.b);
- s.coins+=perfect?5:3;s.xp+=perfect?12:8;todayVisit(s,now);
+ s.coins+=(perfect?5:3)+(run.kind==="tower"?Math.floor((run.floor-1)/10):0);s.xp+=perfect?12:8;todayVisit(s,now);
  if(run.boss){ensureBattle(run);run.bossHp=Math.max(0,run.bossHp-1);}
  run.answers.push({a:q.a,b:q.b,q:q.q,r:q.r,perfect});run.index++;run.questionAttempts=0;
  if(run.index===run.questions.length){
  const stars=run.perfect===run.questions.length?3:run.perfect>=Math.ceil(run.questions.length*.6)?2:1;
  const key=run.world+":"+run.stage,dk=key+':'+run.difficulty,records=ensureProgression(s);const first=run.kind==="level"&&!records[dk];
  if(run.kind==="level"){records[dk]=Math.max(records[dk]||0,stars);s.levels[key]=Math.max(s.levels[key]||0,stars);s.daily.levels++;}
- const bonus=first?(run.boss?60:25):10;s.coins+=bonus;s.xp+=run.boss?40:20;
- const entry={outcome:"won",difficulty:run.difficulty,playerHp:run.playerHp,maxPlayerHp:run.maxPlayerHp,bossHp:run.bossHp,maxBossHp:run.maxBossHp,kind:run.kind,world:run.world,stage:run.stage,boss:run.boss,stars,perfect:run.perfect,count:run.questions.length,bonus,first,at:now,answers:run.answers};
+ const tower=run.kind==="tower"?clearTower(s,run,stars):null;const bonus=tower?tower.bonus:first?(run.boss?60:25):10;s.coins+=bonus;s.xp+=tower?tower.xp:run.boss?40:20;
+ const entry={outcome:"won",floor:run.floor,reward:tower?.reward,towerFirst:tower?.first,difficulty:run.difficulty,playerHp:run.playerHp,maxPlayerHp:run.maxPlayerHp,bossHp:run.bossHp,maxBossHp:run.maxBossHp,kind:run.kind,world:run.world,stage:run.stage,boss:run.boss,stars,perfect:run.perfect,count:run.questions.length,bonus,first,at:now,answers:run.answers};
  s.lastResult=entry;s.history.push(entry);s.history=s.history.slice(-60);s.run=null;badges(s);
  return {correct:true,finished:true,result:entry};}
  badges(s);return {correct:true,finished:false,combo:run.combo};
@@ -139,7 +146,7 @@ function wrongAnswer(s,q,now,reason){
  if(old){old.errors++;old.lastAt=now;}else s.mistakes.push({question:q,errors:1,lastAt:now});
  s.mistakes=s.mistakes.slice(-40);
  if(r.boss){ensureBattle(r);r.playerHp=Math.max(0,r.playerHp-1);
- if(r.playerHp===0){const entry={outcome:"lost",kind:r.kind,world:r.world,stage:r.stage,boss:true,difficulty:r.difficulty,stars:0,perfect:r.perfect,count:r.questions.length,bonus:0,first:false,at:now,answers:r.answers,playerHp:0,maxPlayerHp:r.maxPlayerHp,bossHp:r.bossHp,maxBossHp:r.maxBossHp};s.lastResult=entry;s.run=null;return {correct:false,finished:true,failed:true,result:entry,reason};}}
+ if(r.playerHp===0){const entry={outcome:"lost",floor:r.floor,kind:r.kind,world:r.world,stage:r.stage,boss:true,difficulty:r.difficulty,stars:0,perfect:r.perfect,count:r.questions.length,bonus:0,first:false,at:now,answers:r.answers,playerHp:0,maxPlayerHp:r.maxPlayerHp,bossHp:r.bossHp,maxBossHp:r.maxBossHp};s.lastResult=entry;s.run=null;return {correct:false,finished:true,failed:true,result:entry,reason};}}
  return {correct:false,reason,tries:r.questionAttempts,damage:r.boss?1:0};
 }
 function stepAnswer(s,a,now){

@@ -1,3 +1,4 @@
+import {TOWER_SCENES} from './tower.js';
 // Item positions are authored against the 512×512 neutral Cinnamoroll pose.
 import {rewardSkins} from './progression.js';
 export const SLOT_LABELS={head:'帽子',ear:'耳飾',eyes:'眼鏡',neck:'頸飾',chest:'胸針',hand:'手持',back:'背包',outfit:'衣服',float:'自由擺放',ground:'自由擺放','room-left':'自由擺放','room-right':'自由擺放','room-floor':'自由擺放','room-top':'自由擺放'};
@@ -10,7 +11,7 @@ export const SCENES=[
 {id:'scene-beach',name:'彩虹海灘',emoji:'🏖️',file:'beach',desc:'累計答對 25 題獲得',unlock:s=>s.correct>=25},
 {id:'scene-garden',name:'星光花園',emoji:'🌷',file:'garden',desc:'累計答對 75 題獲得',unlock:s=>s.correct>=75},
 {id:'scene-castle',name:'月光城堡',emoji:'🏰',file:'castle',desc:'通過彩虹港灣魔王獲得',unlock:s=>!!s.levels['2:5']}
-].map(i=>({...i,kind:'scene',cost:0}));
+,...TOWER_SCENES].map(i=>({...i,kind:'scene',cost:0}));
 export const MOTIONS=[
 {id:'motion-breathe',name:'呼吸搖擺',emoji:'☁️',motion:'breathe',starter:true},
 {id:'motion-peek',name:'左右探頭',emoji:'👀',motion:'peek',starter:true},
@@ -26,16 +27,18 @@ export function ensureWardrobe(s){
  for(const id of STARTER_ITEMS)if(!s.inventory.includes(id))s.inventory.push(id);
  if(!s.wardrobe){s.wardrobe={slots:{},scene:'scene-bedroom',motions:MOTIONS.filter(i=>i.starter).map(i=>i.id)};if(s.equipped&&s.inventory.includes(s.equipped)&&LEGACY_SLOTS[s.equipped])s.wardrobe.slots[LEGACY_SLOTS[s.equipped]]=s.equipped;}
  for(const i of [...SCENES,...MOTIONS])if(i.unlock?.(s)&&!s.inventory.includes(i.id))s.inventory.push(i.id);
- const w=s.wardrobe;w.props??={};w.layout??={};w.wearScales??={};w.wearOffsets??={};w.skin??='original';
+ const w=s.wardrobe;w.props??={};w.layout??={};w.wearScales??={};w.wearOffsets??={};w.skin??='original';w.character??='original';
  for(const [slot,id] of Object.entries(w.slots))if(isFreeItem({slot})){w.props[id]=w.layout[id]||defaultPlacement(slot);delete w.slots[slot];}
  return w;
 }
 export function useCollection(s,item,catalog){
  const w=ensureWardrobe(s);
  if(item===null){w.slots={};w.props={};s.equipped=null;return;}
+ if(item==='character-original'){w.character='original';return;}
  if(item==='skin-original'){w.skin='original';return;}
  const i=catalog.find(i=>i.id===item);if(!i||!s.inventory.includes(item))throw new Error('尚未擁有這個收藏');
- if(i.kind==='skin')w.skin=item;
+ if(i.kind==='character')w.character=item;
+ else if(i.kind==='skin')w.skin=item;
  else if(isFreeItem(i))w.props[item]=w.layout[item]||defaultPlacement(i.slot);
  else if(i.kind==='scene')w.scene=item;
  else if(i.kind==='motion'){
@@ -43,7 +46,7 @@ export function useCollection(s,item,catalog){
   else w.motions.push(item);
  }else{w.slots[i.slot]=item;if(i.wear)s.equipped=item;}
 }
-export function isUsing(s,i){const w=ensureWardrobe(s);return i.kind==='skin'?w.skin===i.id:isFreeItem(i)?Boolean(w.props[i.id]):i.kind==='scene'?w.scene===i.id:i.kind==='motion'?w.motions.includes(i.id):w.slots[i.slot]===i.id;}
+export function isUsing(s,i){const w=ensureWardrobe(s);return i.kind==='character'?w.character===i.id:i.kind==='skin'?w.skin===i.id:isFreeItem(i)?Boolean(w.props[i.id]):i.kind==='scene'?w.scene===i.id:i.kind==='motion'?w.motions.includes(i.id):w.slots[i.slot]===i.id;}
 export function placeProp(s,a,catalog){
  const w=ensureWardrobe(s),i=catalog.find(i=>i.id===a.item);
  if(!isFreeItem(i)||!s.inventory.includes(a.item)||!w.props[a.item])throw new Error('請先擺上已擁有的物件');

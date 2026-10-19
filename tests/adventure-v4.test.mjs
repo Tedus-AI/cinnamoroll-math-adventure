@@ -8,7 +8,7 @@ import {itemDrawing} from '../public/game/item-art.js';
 
 test('twenty-six distinct additions can be bought, equipped, saved and removed from their slots',()=>{
  assert.equal(EXTRA_ITEMS.length,26);assert.equal(EXTRA_ITEMS.filter(i=>i.kind==='prop').length,8);
- assert.equal(COLLECTION.length,59);assert.equal(new Set(COLLECTION.map(i=>i.id)).size,59);
+ assert.equal(COLLECTION.length,69);assert.equal(new Set(COLLECTION.map(i=>i.id)).size,69);
  const s=newState();s.coins=10000;
  for(const i of EXTRA_ITEMS){
   const before=s.coins;
@@ -26,13 +26,13 @@ test('administrator unlocks all levels and collections without inventing learnin
  const s=newState();assert.equal(stageUnlocked(s,5,5),false);
  unlockAdministrator(s);
  for(let w=0;w<6;w++)for(let l=0;l<6;l++)assert.ok(stageUnlocked(s,w,l));
- assert.equal(s.inventory.length,59);assert.equal(s.correct,0);assert.deepEqual(s.levels,{});
+ assert.equal(s.inventory.length,69);assert.equal(s.correct,0);assert.deepEqual(s.levels,{});
  assert.equal(s.history.length,0);assert.equal(s.coins,0);
  assert.throws(()=>applyAction(newState(),{id:'forged',type:'admin-login',adminUnlocked:true}));
 });
 test('all six worlds and bosses have independent original scores and valid routing',()=>{
- assert.equal(Object.keys(MUSIC).length,20);
- assert.equal(new Set(Object.values(MUSIC).map(x=>JSON.stringify(x.melody))).size,20);
+ assert.equal(Object.keys(MUSIC).length,25);
+ assert.equal(new Set(Object.values(MUSIC).map(x=>JSON.stringify(x.melody))).size,25);
  for(let w=0;w<6;w++){assert.equal(musicTrack('world',w),'world-'+w);assert.equal(musicTrack('play',w,true),'boss-'+w);}
  assert.equal(musicTrack('home'),'home');assert.equal(musicTrack('dressing'),'room-scene-bedroom');
  assert.equal(musicTrack('practice'),'practice');

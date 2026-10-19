@@ -42,7 +42,7 @@ test('automatic device choice handles desktop-mode iPad, Android tablet and touc
 });
 test('each room routes to its own distinct named composition',()=>{
  const keys=SCENES.map(s=>musicTrack('dressing',0,false,s.id));
- assert.equal(new Set(keys).size,5);assert.equal(new Set(keys.map(k=>JSON.stringify(MUSIC[k].melody))).size,5);
+ assert.equal(new Set(keys).size,SCENES.length);assert.equal(new Set(keys.map(k=>JSON.stringify(MUSIC[k].melody))).size,SCENES.length);
  SCENES.forEach((s,i)=>assert.ok(MUSIC[keys[i]].name.startsWith(s.name)));
  assert.equal(musicTrack('dressing',0,false,'unknown'),keys[0]);
 });

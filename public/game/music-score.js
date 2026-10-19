@@ -38,6 +38,8 @@ const roomScores={
  'scene-garden':{...make('星光花園・花瓣圓舞曲',62,90,[12,16,19,21,19,null,17,21,24,26,24,null,19,17,16,14,12,null],[0,5,9,7]),instrument:'flute',beats:6,notes:[1,1,1,1,1,0],arp:[0,4,7],length:1.9,swing:0},
  'scene-castle':{...make('月光城堡・銀月小夜曲',69,76,[12,null,15,19,22,null,24,22,20,19,17,null,15,14,12,null],[0,8,5,7]),instrument:'strings',beats:8,notes:[1,0,1,1,1,0,1,1],arp:[0,3,7,10],length:3,swing:0}
 };
+const towerSongs=[['aurora','極光雲端觀測台・極光慢舞',64,70,'strings',[12,19,24,null,22,19,17,null]],['blossom','櫻花流水庭園・櫻雨小徑',65,94,'flute',[12,16,19,21,19,17,16,null]],['meteor','流星祈願露台・流星心願',69,78,'bell',[24,null,19,22,null,17,19,null]],['lagoon','彩虹水晶潟湖・水晶漣漪',67,106,'steel',[12,19,16,null,21,24,19,16]],['palace','天界星光宮殿・天界星冠',60,88,'harp',[12,19,24,28,26,24,19,null]]];
+for(const [id,name,root,bpm,instrument,melody] of towerSongs)roomScores['scene-tower-'+id]={...make(name,root,bpm,melody,[0,5,9,7]),instrument,beats:8,notes:[1,1,0,1,1,0,1,0],arp:[0,7,12,16],length:2.5,swing:0};
 for(const [scene,score] of Object.entries(roomScores))MUSIC['room-'+scene]=score;
 export function musicTrack(view,world=0,boss=false,scene='scene-bedroom'){
  if(view==='dressing')return 'room-'+(Object.hasOwn(roomScores,scene)?scene:'scene-bedroom');

@@ -6,14 +6,14 @@ import {fitAttachments} from './character-fit.js';
 const SOURCE='./assets/cinnamoroll-poses.png';
 export const MOTION_POSES={breathe:0,peek:0,hop:3,float:1,sleep:5,dance:3,cheer:3};
 export function applyMotionPose(rig,name){
- const pose=MOTION_POSES[name]??0,art=rig.querySelector('.original-character');
+ const friend=rig.querySelector('.character-live')?.dataset.character!=='original',pose=friend?0:MOTION_POSES[name]??0,art=rig.querySelector('.original-character');
  if(art)art.setAttribute('viewBox',(pose%3*512)+' '+(Math.floor(pose/3)*512)+' 512 512');
  const character=rig.querySelector('.character-live');if(character){character.dataset.sourcePose=String(pose);character.dataset.motion=name;fitAttachments(character,pose);}
  const canvas=rig.querySelector('canvas');active.get(canvas)?.draw(performance.now());
 }
 const vertexSource=[
 'attribute vec2 aPosition;',
-'uniform mediump float uTime; uniform float uMotion; uniform float uPose;',
+'uniform mediump float uTime; uniform float uMotion; uniform float uPose; uniform float uSingle;',
 'varying vec2 vUV;',
 'float region(vec2 p,vec2 center,vec2 radius){return 1.0-smoothstep(0.45,1.0,length((p-center)/radius));}',
 'vec2 rotateAt(vec2 p,vec2 pivot,float angle){float c=cos(angle),s=sin(angle);vec2 d=p-pivot;return pivot+vec2(d.x*c-d.y*s,d.x*s+d.y*c);}',
@@ -23,9 +23,10 @@ const vertexSource=[
 ' float dance=step(4.5,uMotion); float cheer=step(5.5,uMotion); float fly=step(2.5,uMotion)*(1.0-step(3.5,uMotion));',
 ' float hop=step(1.5,uMotion)*(1.0-step(2.5,uMotion));',
 ' float peek=step(.5,uMotion)*(1.0-step(1.5,uMotion));',
-' float pose=uPose;',
+' float pose=uPose; if(uSingle>.5){fly=0.0;hop=0.0;dance=0.0;cheer=0.0;}',
 ' vUV=(clamp(aPosition,vec2(.5),vec2(511.5))+vec2(mod(pose,3.0)*512.0,floor(pose/3.0)*512.0))/vec2(1536.0,1024.0);',
-' if(sleepMode>.5){',
+' if(uSingle>.5)vUV=clamp(aPosition,vec2(.5),vec2(511.5))/512.0;',
+' if(sleepMode>.5&&uSingle<.5){',
 '  float head=region(p,vec2(220.0,230.0),vec2(153.0,110.0));',
 '  p=mix(p,rotateAt(p,vec2(240.0,305.0),.025+.018*sin(t*1.2)),head);',
 '  p.y+=head*(2.0+2.0*sin(t*1.2));',
@@ -91,11 +92,8 @@ const vertexSource=[
 ].join('\n');
 const fragmentSource='precision mediump float; uniform sampler2D uImage; uniform vec3 uTint; uniform float uRainbow; uniform float uTime; varying vec2 vUV; void main(){vec4 c=texture2D(uImage,vUV);float light=min(c.r,min(c.g,c.b));float white=smoothstep(.55,.95,light);vec3 rainbow=.77+.23*cos(6.28318*(vUV.x*2.0+vUV.y*.7+uTime*.025+vec3(0.0,.33,.67)));vec3 tint=mix(uTint,rainbow,uRainbow);c.rgb=mix(c.rgb,c.rgb*tint,white);gl_FragColor=vec4(c.rgb*c.a,c.a);}';
 const active=new Map();
-let imagePromise,frame=null,lastFrame=0;
-function imageReady(){
- if(!imagePromise)imagePromise=new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=SOURCE;});
- return imagePromise;
-}
+const imagePromises=new Map();let frame=null,lastFrame=0;
+function imageReady(source=SOURCE){if(!imagePromises.has(source))imagePromises.set(source,new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=source;}));return imagePromises.get(source);}
 function shader(gl,type,source){
  const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);
  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){gl.deleteShader(s);throw new Error('Character shader unavailable');}return s;
@@ -122,7 +120,8 @@ function createRenderer(canvas,img){
  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
  gl.uniform1i(gl.getUniformLocation(program,'uImage'),0);gl.clearColor(0,0,0,0);
  const time=gl.getUniformLocation(program,'uTime'),motion=gl.getUniformLocation(program,'uMotion'),poseUniform=gl.getUniformLocation(program,'uPose');
- const parent=canvas.parentElement,skin=SKINS.find(s=>s.id===parent.dataset.skin);let lastName='',started=0;
+ const parent=canvas.parentElement,single=parent.dataset.character!=='original',skin=SKINS.find(s=>s.id===parent.dataset.skin);let lastName='',started=0;
+ gl.uniform1f(gl.getUniformLocation(program,'uSingle'),single?1:0);
  gl.uniform3fv(gl.getUniformLocation(program,'uTint'),skin?.rgb||[1,1,1]);gl.uniform1f(gl.getUniformLocation(program,'uRainbow'),skin?.rainbow?1:0);
  surface.addEventListener('webglcontextlost',()=>{parent.classList.remove('rig-ready');active.delete(canvas);},{once:true});
  surface.addEventListener('webglcontextrestored',()=>{canvas.dataset.mounted='';mountCharacters(parent);},{once:true});
@@ -134,7 +133,7 @@ function createRenderer(canvas,img){
    if(canvas.width!==size){canvas.width=size;canvas.height=size;surface.width=size;surface.height=size;gl.viewport(0,0,size,size);}
    const rig=canvas.closest('.doll-rig'),basePose=Number(parent.dataset.pose)||0;
    const name=rig?.dataset.motion||['breathe','float','peek','cheer','breathe','sleep'][basePose];
-   const pose=rig?MOTION_POSES[name]??0:basePose;
+   const pose=single?0:rig?MOTION_POSES[name]??0:basePose;
    if(name!==lastName){lastName=name;started=ms;}
    const kind=['breathe','peek','hop','float','sleep','dance','cheer'].indexOf(name);
    gl.uniform1f(time,(ms-started)/1000);gl.uniform1f(motion,Math.max(0,kind));gl.uniform1f(poseUniform,pose);gl.clear(gl.COLOR_BUFFER_BIT);
@@ -164,8 +163,7 @@ export async function mountCharacters(root=document){
  if(!canvases.length)return;
  for(const c of canvases)c.dataset.mounted='true';
  try{
-  const img=await imageReady();
-  for(const c of canvases){if(!c.isConnected)continue;const renderer=createRenderer(c,img);if(renderer){active.set(c,renderer);renderer.draw(performance.now());}}
+  for(const c of canvases){const img=await imageReady(c.parentElement.dataset.source);if(!c.isConnected)continue;const renderer=createRenderer(c,img);if(renderer){active.set(c,renderer);renderer.draw(performance.now());}}
   if(active.size&&!frame)frame=requestAnimationFrame(tick);
  }catch{/* Preserve the original artwork if graphics are unavailable. */}
 }
