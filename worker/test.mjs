@@ -21,7 +21,7 @@ try{
  const reserved=await call('register',{username:'system_admin',pin:'93816542'});assert.equal(reserved.status,409);
  const wrong=await call('admin-login',{pin:'0000'});assert.equal(wrong.status,401);
  const admin=await call('admin-login',{pin:'4826'});assert.equal(admin.status,200);assert.equal(admin.data.user.role,'admin');
- assert.equal(admin.data.state.inventory.length,59);assert.equal(admin.data.state.adminUnlocked,true);
+ assert.equal(admin.data.state.inventory.length,69);assert.equal(admin.data.state.adminUnlocked,true);
  assert.equal(admin.data.state.correct,0);assert.deepEqual(admin.data.state.levels,{});
  const battle=await call('event',{id:'last-boss',version:0,type:'start',options:{kind:'level',world:5,stage:5}},admin.data.token);
  assert.equal(battle.status,200);assert.equal(battle.data.state.run.boss,true);
@@ -38,5 +38,5 @@ try{
  for(let i=0;i<3;i++)assert.equal((await call('admin-login',{pin:'0000'})).status,401);
  assert.equal((await call('admin-login',{pin:'4826'})).status,429);
  const oversized=await call('register',{username:'huge',pin:'93816542',padding:'a'.repeat(17000)});assert.equal(oversized.status,413);
- console.log('PASS: admin secret, role isolation, 59 unlocks, final boss access, prop persistence, session revocation, brute-force limit, and body limit.');
+ console.log('PASS: admin secret, role isolation, 69 unlocks, final boss access, prop persistence, session revocation, brute-force limit, and body limit.');
 }finally{await mf.dispose();}

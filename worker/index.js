@@ -42,7 +42,7 @@ async function authorized(req,db){
 function trustedState(save,user){const s=JSON.parse(save.state);if(user.role==='admin')unlockAdministrator(s);else delete s.adminUnlocked;return s;}
 async function accountData(db,user){
  const save=await db.prepare('SELECT state,version FROM saves WHERE user_id=?').bind(user.id).first();if(!save)throw fail('找不到冒險進度，請聯絡管理員',503);
- return {user:{id:user.id,username:user.username,name:user.name,role:user.role},state:publicState(trustedState(save,user)),version:save.version};
+ return {user:{id:user.id,username:user.username,name:user.name,role:user.role},serverNow:Date.now(),state:publicState(trustedState(save,user)),version:save.version};
 }
 async function adminLogin(req,env,b,ip){
  if(!env.ADMIN_PIN)throw fail('管理員入口尚未設定',503);
@@ -91,7 +91,7 @@ export default {
       db.prepare('INSERT INTO saves (user_id,state,version,updated_at) VALUES (?,?,0,?)').bind(id,JSON.stringify(state),now)
      ]);
      await db.batch([db.prepare('DELETE FROM sessions WHERE expires_at<?').bind(now),db.prepare('DELETE FROM rate_limits WHERE expires_at<?').bind(now)]);
-     return response(req,{user:{id,username,name,role:'player'},token:await tokenFor(db,id),recovery,state:publicState(state),version:0});
+     return response(req,{user:{id,username,name,role:'player'},token:await tokenFor(db,id),recovery,serverNow:Date.now(),state:publicState(state),version:0});
     }
     const user=await db.prepare('SELECT * FROM players WHERE username=?').bind(username).first();
     const value=String(action==='recover'?b.recovery:b.pin),hash=await pinHash(value,user?.salt||'00000000000000000000000000000000');
@@ -111,12 +111,12 @@ export default {
    if(action!=='event')throw fail('找不到這個功能',404);
    await limit(db,'events:'+user.id,200,60000);
    const save=await db.prepare('SELECT state,version FROM saves WHERE user_id=?').bind(user.id).first(),state=trustedState(save,user);
-   if(state.actions.includes(b.id))return response(req,{state:publicState(state),version:save.version,result:{duplicate:true}});
-   if(b.version!==save.version)return response(req,{error:'另一個裝置已有新進度，已替你同步',state:publicState(state),version:save.version},409);
+   if(state.actions.includes(b.id))return response(req,{serverNow:Date.now(),state:publicState(state),version:save.version,result:{duplicate:true}});
+   if(b.version!==save.version)return response(req,{error:'另一個裝置已有新進度，已替你同步',serverNow:Date.now(),state:publicState(state),version:save.version},409);
    let result;try{result=applyAction(state,b);}catch(e){throw fail(e.message);}
    const changed=await db.prepare('UPDATE saves SET state=?,version=version+1,updated_at=? WHERE user_id=? AND version=?').bind(JSON.stringify(state),Date.now(),user.id,save.version).run();
    if(!changed.meta.changes){const latest=await accountData(db,user);return response(req,{error:'另一個裝置已有新進度，已替你同步',state:latest.state,version:latest.version},409);}
-   return response(req,{state:publicState(state),version:save.version+1,result:result.run?{started:true}:result});
+   return response(req,{serverNow:Date.now(),state:publicState(state),version:save.version+1,result:result.run?{started:true}:result});
   }catch(e){if(!e.status)console.error(JSON.stringify({event:'game-api-error',kind:e.name}));return response(req,{error:e.status?e.message:'雲端目前無法連線，請稍後再試'},e.status||503);}
  }
 };

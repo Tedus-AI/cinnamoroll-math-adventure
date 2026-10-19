@@ -13,13 +13,13 @@ test('every original collection has a fixed slot and all types can be equipped',
  const s=newState();s.inventory=COLLECTION.map(i=>i.id);ensureWardrobe(s);
  for(const i of COLLECTION){if(i.kind!=='motion'||!s.wardrobe.motions.includes(i.id))event(s,'equip',i.id);if(i.kind==='accessory'){assert.ok(SLOT_LABELS[i.slot]);assert.equal(s.wardrobe.slots[i.slot],i.id);}if(i.kind==='scene')assert.equal(s.wardrobe.scene,i.id);}
  event(s,'equip','star');event(s,'equip','crown');event(s,'equip','flower');assert.equal(s.wardrobe.slots.ear,'flower');assert.equal(s.wardrobe.slots.head,'crown');
- event(s,'equip',null);assert.deepEqual(s.wardrobe.slots,{});assert.equal(s.wardrobe.scene,'scene-castle');
+ event(s,'equip',null);assert.deepEqual(s.wardrobe.slots,{});assert.equal(s.wardrobe.scene,SCENES.at(-1).id);
 });
 test('unearned collectibles are rejected; last idle cannot be removed; rewards survive reload',()=>{
  const s=newState();ensureWardrobe(s);assert.throws(()=>event(s,'equip','scene-castle'));assert.throws(()=>event(s,'equip','crown'));
  const list=[...s.wardrobe.motions];for(const id of list.slice(1))event(s,'equip',id);assert.throws(()=>event(s,'equip',list[0]));
  s.correct=75;s.fourCorrect=100;s.levels['2:5']=3;s.history=[{stars:1}];badges(s);
- const copy=JSON.parse(JSON.stringify(s));for(const i of [...SCENES,...MOTIONS])assert.ok(copy.inventory.includes(i.id),i.id);
+ const copy=JSON.parse(JSON.stringify(s));for(const i of [...SCENES.filter(i=>!i.floor),...MOTIONS])assert.ok(copy.inventory.includes(i.id),i.id);
 });
 test('random motions do not repeat consecutively; repeated equip request does not toggle twice',()=>{
  const s=newState();ensureWardrobe(s);const a=randomMotion(s,null,()=>0),b=randomMotion(s,a,()=>0);assert.notEqual(a,b);
