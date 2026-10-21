@@ -14,6 +14,7 @@ export function sceneEffects(scene){
  if(!scene.asset)return '';
  const marks={aurora:'✦',blossom:'🌸',meteor:'',lagoon:'',palace:'✦'};
  // Dedicated moving layers sit behind the doll and never receive pointer events.
- const layers=scene.asset==='blossom'?'':Array.from({length:3},(_,i)=>'<div class="scene-motion-layer layer-'+i+'"></div>').join('');
- return '<div class="scene-effects effect-'+scene.asset+'" aria-hidden="true"><div class="scene-light"></div>'+layers+Array.from({length:12},(_,i)=>'<i style="--i:'+i+';--x:'+((i*37+7)%100)+'%;--size:'+(28+(i%4)*12)+'px;--delay:-'+(i*1.7)+'s">'+marks[scene.asset]+'</i>').join('')+'</div>';
+ const light=scene.asset==='lagoon'?'':'<div class="scene-light"></div>';
+ const layers=['blossom','lagoon'].includes(scene.asset)?'':Array.from({length:3},(_,i)=>'<div class="scene-motion-layer layer-'+i+'"></div>').join('');
+ return '<div class="scene-effects effect-'+scene.asset+'" aria-hidden="true">'+light+layers+Array.from({length:12},(_,i)=>'<i style="--i:'+i+';--x:'+((i*37+7)%100)+'%;--size:'+(28+(i%4)*12)+'px;--delay:-'+(i*1.7)+'s">'+marks[scene.asset]+'</i>').join('')+'</div>';
 }
